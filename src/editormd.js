@@ -1,39 +1,39 @@
 ;(function(factory) {
     "use strict";
-    
+
 	// CommonJS/Node.js
 	if (typeof require === "function" && typeof exports === "object" && typeof module === "object")
-    { 
-        module.exports = factory;
+    {
+        module.exports = factory();
     }
 	else if (typeof define === "function")  // AMD/CMD/Sea.js
 	{
         if (define.amd) // for Require.js
         {
             /* Require.js define replace */
-        } 
+        }
         else 
         {
 		    define(["jquery"], factory);  // for Sea.js
         }
-	} 
+	}
 	else
-	{ 
+	{
         window.editormd = factory();
 	}
-    
-}(function() {    
+
+}(function() {  
 
     /* Require.js assignment replace */
-    
+
     "use strict";
-    
-    var $ = (typeof (jQuery) !== "undefined") ? jQuery : Zepto;
+
+    var $ = (typeof (window.jQuery) !== "undefined") ? window.jQuery : window.Zepto;
 
 	if (typeof ($) === "undefined") {
 		return ;
 	}
-    
+
     /**
      * editormd
      * 
@@ -119,7 +119,7 @@
             }
             
             var classPrefix      = this.classPrefix  = editormd.classPrefix; 
-            var settings         = this.settings     = $.extend(true, editormd.defaults, options);
+            var settings         = this.settings     = $.extend(true, {}, editormd.defaults, options);
             
             id                   = (typeof id === "object") ? settings.id : id;
             
@@ -207,9 +207,9 @@
             
             if (typeof define === "function" && define.amd)
             {
-                if (typeof katex !== "undefined") 
+                if (typeof window.katex !== "undefined") 
                 {
-                    editormd.$katex = katex;
+                    editormd.$katex = window.katex;
                 }
                 
                 if (settings.searchReplace && !settings.readOnly) 
@@ -218,20 +218,20 @@
                     editormd.loadCSS(settings.path + "codemirror/addon/search/matchesonscrollbar");
                 }
             }
-            
+
             if ((typeof define === "function" && define.amd) || !settings.autoLoadModules)
             {
-                if (typeof CodeMirror !== "undefined") {
-                    editormd.$CodeMirror = CodeMirror;
+                if (typeof window.CodeMirror !== "undefined") {
+                    editormd.$CodeMirror = window.CodeMirror;
                 }
-                
-                if (typeof marked     !== "undefined") {
-                    editormd.$marked     = marked;
+
+                if (typeof window.marked !== "undefined") {
+                    editormd.$marked = window.marked;
                 }
-                
+
                 this.setCodeMirror().setToolbar().loadedDisplay();
             } 
-            else 
+            else
             {
                 this.loadQueues();
             }
@@ -400,7 +400,6 @@
             }
             
             var cm       = this.cm;
-            var editor   = this.editor;
             var count    = cm.lineCount();
             var preview  = this.preview;
             
@@ -1107,7 +1106,7 @@
 
     // Emoji graphics files url path
     editormd.emoji     = {
-        path  : "http://www.emoji-cheat-sheet.com/graphics/emojis/",
+        path  : "https://www.webpagefx.com/tools/emoji-cheat-sheet/graphics/emojis/",
         ext   : ".png"
     };
 
@@ -1189,12 +1188,12 @@
 
             if (this.options.sanitize) {
                 try {
-                    var prot = decodeURIComponent(unescape(href)).replace(/[^\w:]/g,"").toLowerCase();
-                } catch(e) {
-                    return "";
-                }
+                    var prot = decodeURIComponent(unescape(href)).replace(/[^\w:]/g, "").toLowerCase();
 
-                if (prot.indexOf("javascript:") === 0) {
+                    if (prot.indexOf("javascript:") === 0) {
+                        return "";
+                    }
+                } catch(e) {
                     return "";
                 }
             }
@@ -1219,12 +1218,12 @@
 
             return out;
         };
-        
-        markedRenderer.heading = function(text, level, raw) {
-                    
+
+        markedRenderer.heading = function(text, level) {
+
             var linkText       = text;
             var hasLinkReg     = /\s*\<a\s*href\=\"(.*)\"\s*([^\>]*)\>(.*)\<\/a\>\s*/;
-            var getLinkTextReg = /\s*\<a\s*([^\>]+)\>([^\>]*)\<\/a\>\s*/g;
+            // var getLinkTextReg = /\s*\<a\s*([^\>]+)\>([^\>]*)\<\/a\>\s*/g;
 
             if (hasLinkReg.test(text)) 
             {
@@ -1296,7 +1295,7 @@
                            : ( (pageBreakReg.test(text)) ? this.pageBreak(text) : "<p" + isTeXAddClass + ">" + this.atLink(this.emoji(text)) + "</p>\n" );
         };
 
-        markedRenderer.code = function (code, lang, escaped) { 
+        markedRenderer.code = function (code, lang) {
 
             if (lang === "seq" || lang === "sequence")
             {
@@ -1487,7 +1486,7 @@
     editormd.filterHTMLTags = function(html, filters) {
         
         if (typeof html !== "string") {
-            html = new String(html);
+            html = html.toString();
         }
             
         if (typeof filters !== "string") {
@@ -1525,7 +1524,9 @@
                     var $attrs = {};
                     
                     $.each(_attrs, function(i, e) {
-                        if (e.nodeName !== '"') $attrs[e.nodeName] = e.nodeValue;
+                        if (e.nodeName !== "\"") {
+                            $attrs[e.nodeName] = e.nodeValue;
+                        }
                     });
                     
                     $.each($attrs, function(i) {                        
@@ -1596,9 +1597,9 @@
         editormd.$marked  = marked;
 
         var div           = $("#" + id);
-        var settings      = div.settings = $.extend(true, defaults, options || {});
+        var settings      = div.settings = $.extend(true, {}, defaults, options || {});
         var saveTo        = div.find("textarea");
-        
+
         if (saveTo.length < 1)
         {
             div.append("<textarea></textarea>");
@@ -1633,13 +1634,13 @@
             smartLists  : true,
             smartypants : true
         };
-        
-		markdownDoc = new String(markdownDoc);
-        
+
+        markdownDoc = markdownDoc.toString();
+
         var markdownParsed = marked(markdownDoc, markedOptions);
-        
+
         markdownParsed = editormd.filterHTMLTags(markdownParsed, settings.htmlDecode);
-        
+
         if (settings.markdownSourceCode) {
             saveTo.text(markdownDoc);
         } else {
@@ -1780,6 +1781,7 @@
             title : "",
             drag  : true,
             closed : true,
+            cached : false,
             content : "",
             mask : true,
             maskStyle : {
@@ -1798,8 +1800,6 @@
         var classPrefix  = editormd.classPrefix;
         var guid         = (new Date()).getTime();
         var dialogName   = ( (options.name === "") ? classPrefix + "dialog-" + guid : options.name);
-        var mouseOrTouch = editormd.mouseOrTouch;
-
         var html         = "<div class=\"" + classPrefix + "dialog " + dialogName + "\">";
 
         if (options.title !== "")
@@ -1822,7 +1822,6 @@
         }
 
         html += "</div>";
-
         html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-bg\"></div>";
         html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-con\"></div>";
         html += "</div>";
@@ -1885,8 +1884,12 @@
 
         $(window).resize(dialogPosition);
 
-        dialog.children("." + classPrefix + "dialog-close").bind(mouseOrTouch("click", "touchend"), function() {
+        dialog.children("." + classPrefix + "dialog-close").bind("click", function() {
             dialog.hide().lockScreen(false).hideMask();
+
+            if (!options.cached) {
+                dialog.remove();
+            }
         });
 
         if (typeof options.buttons === "object")
@@ -1900,7 +1903,7 @@
 
                 footer.append("<button class=\"" + classPrefix + "btn " + btnClassName + "\">" + btn[0] + "</button>");
                 btn[1] = $.proxy(btn[1], dialog);
-                footer.children("." + btnClassName).bind(mouseOrTouch("click", "touchend"), btn[1]);
+                footer.children("." + btnClassName).bind("click", btn[1]);
             }
         }
 
@@ -1910,26 +1913,18 @@
             var dialogHeader = dialog.children("." + classPrefix + "dialog-header");
 
             if (!options.mask) {
-                dialogHeader.bind(mouseOrTouch("click", "touchend"), function(){
+                dialogHeader.bind("click", function(){
                     editormd.dialogZindex += 2;
                     dialog.css("z-index", editormd.dialogZindex);
                 });
             }
-
-            dialogHeader.mousedown(function(e) {
-                e = e || window.event;  //IE
-                posX = e.clientX - parseInt(dialog[0].style.left);
-                posY = e.clientY - parseInt(dialog[0].style.top);
-
-                document.onmousemove = moveAction;                   
-            });
 
             var userCanSelect = function (obj) {
                 obj.removeClass(classPrefix + "user-unselect").off("selectstart");
             };
 
             var userUnselect = function (obj) {
-                obj.addClass(classPrefix + "user-unselect").on("selectstart", function(event) { // selectstart for IE                        
+                obj.addClass(classPrefix + "user-unselect").on("selectstart", function() { // selectstart for IE                        
                     return false;
                 });
             };
@@ -1968,6 +1963,14 @@
                 dialog[0].style.left = left + "px";
                 dialog[0].style.top  = top + "px";
             };
+
+            dialogHeader.mousedown(function(e) {
+                e = e || window.event;  //IE
+                posX = e.clientX - parseInt(dialog[0].style.left);
+                posY = e.clientY - parseInt(dialog[0].style.top);
+
+                document.onmousemove = moveAction;                   
+            });
 
             document.onmouseup = function() {                            
                 userCanSelect($("body"));
