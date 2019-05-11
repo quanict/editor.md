@@ -2554,111 +2554,158 @@ var editorWatching = {
         return this;
     },
 }
-const editorEmojiRenderer = function(text) {
-            
-    const emojiReg        = regexConst.emoji;
-    text = text.replace(editormd.regexs.emojiDatetime, function($1) {           
-        return $1.replace(/:/g, "&#58;");
-    });
-    
-    var matchs = text.match(emojiReg);
+class EditorEmojiRenderer { 
 
-    console.log(`-----`,{editormd});
-    console.trace();
-    if (!matchs || !settings.emoji) {
-        return text;
+    constructor(options) {
+        this.defaults = {};
+        this.config = $.extend(this.defaults, options || {}); 
     }
 
-    for (var i = 0, len = matchs.length; i < len; i++)
-    {            
-        if (matchs[i] === ":+1:") {
-            matchs[i] = ":\\+1:";
+    execute(text) {
+            
+        const regexDefault = this.config;
+        text = text.replace(editormd.regexs.emojiDatetime, function($1) {           
+            return $1.replace(/:/g, "&#58;");
+        });
+        
+        var matchs = text.match(regexDefault.emojiReg);
+        
+        if (!matchs ) {
+            return text;
         }
-
-        text = text.replace(new RegExp(matchs[i]), function($1, $2){
-            var faMatchs = $1.match(faIconReg);
-            var name     = $1.replace(/:/g, "");
-
-            if (faMatchs)
-            {                        
-                for (var fa = 0, len1 = faMatchs.length; fa < len1; fa++)
-                {
-                    var faName = faMatchs[fa].replace(/:/g, "");
-                    
-                    return "<i class=\"fa " + faName + " fa-emoji\" title=\"" + faName.replace("fa-", "") + "\"></i>";
-                }
+        for (var i = 0, len = matchs.length; i < len; i++)
+        {            
+            if (matchs[i] === ":+1:") {
+                matchs[i] = ":\\+1:";
             }
-            else
-            {
-                var emdlogoMathcs = $1.match(editormdLogoReg);
-                var twemojiMatchs = $1.match(twemojiReg);
-
-                if (emdlogoMathcs)                                        
-                {                            
-                    for (var x = 0, len2 = emdlogoMathcs.length; x < len2; x++)
+    
+            text = text.replace(new RegExp(matchs[i]), function($1, $2){
+                var faMatchs = $1.match(regexDefault.faIconReg);
+                var name     = $1.replace(/:/g, "");
+    
+                if (faMatchs)
+                {                        
+                    for (var fa = 0, len1 = faMatchs.length; fa < len1; fa++)
                     {
-                        var logoName = emdlogoMathcs[x].replace(/:/g, "");
-                        return "<i class=\"" + logoName + "\" title=\"Editor.md logo (" + logoName + ")\"></i>";
-                    }
-                }
-                else if (twemojiMatchs) 
-                {
-                    for (var t = 0, len3 = twemojiMatchs.length; t < len3; t++)
-                    {
-                        var twe = twemojiMatchs[t].replace(/:/g, "").replace("tw-", "");
-                        return "<img src=\"" + editormd.twemoji.path + twe + editormd.twemoji.ext + "\" title=\"twemoji-" + twe + "\" alt=\"twemoji-" + twe + "\" class=\"emoji twemoji\" />";
+                        var faName = faMatchs[fa].replace(/:/g, "");
+                        
+                        return "<i class=\"fa " + faName + " fa-emoji\" title=\"" + faName.replace("fa-", "") + "\"></i>";
                     }
                 }
                 else
                 {
-                    var src = (name === "+1") ? "plus1" : name;
-                    src     = (src === "black_large_square") ? "black_square" : src;
-                    src     = (src === "moon") ? "waxing_gibbous_moon" : src;
-
-                    return "<img src=\"" + editormd.emoji.path + src + editormd.emoji.ext + "\" class=\"emoji\" title=\"&#58;" + name + "&#58;\" alt=\"&#58;" + name + "&#58;\" />";
+                    var emdlogoMathcs = $1.match(regexDefault.editormdLogoReg);
+                    var twemojiMatchs = $1.match(regexDefault.twemojiReg);
+                    if (emdlogoMathcs)                                        
+                    {                            
+                        for (var x = 0, len2 = emdlogoMathcs.length; x < len2; x++)
+                        {
+                            var logoName = emdlogoMathcs[x].replace(/:/g, "");
+                            return "<i class=\"" + logoName + "\" title=\"Editor.md logo (" + logoName + ")\"></i>";
+                        }
+                    }
+                    else if (twemojiMatchs) 
+                    {
+                        for (var t = 0, len3 = twemojiMatchs.length; t < len3; t++)
+                        {
+                            var twe = twemojiMatchs[t].replace(/:/g, "").replace("tw-", "");
+                            return "<img src=\"" + editormd.twemoji.path + twe + editormd.twemoji.ext + "\" title=\"twemoji-" + twe + "\" alt=\"twemoji-" + twe + "\" class=\"emoji twemoji\" />";
+                        }
+                    }
+                    else
+                    {
+                        var src = (name === "+1") ? "plus1" : name;
+                        src     = (src === "black_large_square") ? "black_square" : src;
+                        src     = (src === "moon") ? "waxing_gibbous_moon" : src;
+    
+                        return "<img src=\"" + editormd.emoji.path + src + editormd.emoji.ext + "\" class=\"emoji\" title=\"&#58;" + name + "&#58;\" alt=\"&#58;" + name + "&#58;\" />";
+                    }
                 }
-            }
-        });
+            });
+        }
+    
+        return text;
+    }
+}
+
+class LinkRenderer { 
+    constructor(options) {
+        this.defaults = {};
+        this.options = $.extend(this.defaults, options || {}); 
     }
 
-    return text;
+    execute(href, title, text) {
+
+        const { atLinkReg } = this.options;
+        if (this.options.sanitize) {
+            try {
+                var prot = decodeURIComponent(unescape(href)).replace(/[^\w:]/g, "").toLowerCase();
+
+                if (prot.indexOf("javascript:") === 0) {
+                    return "";
+                }
+            } catch(e) {
+                return "";
+            }
+        }
+
+        var out = "<a href=\"" + href + "\"";
+        
+        if ( atLinkReg.test(title) || atLinkReg.test(text))
+        {
+            if (title)
+            {
+                out += " title=\"" + title.replace(/@/g, "&#64;");
+            }
+            
+            return out + "\">" + text.replace(/@/g, "&#64;") + "</a>";
+        }
+
+        if (title) {
+            out += " title=\"" + title + "\"";
+        }
+
+        out += ">" + text + "</a>";
+
+        return out;
+    }
 }
 ;(function(factory) {
     "use strict";
-    
+
 	// CommonJS/Node.js
 	if (typeof require === "function" && typeof exports === "object" && typeof module === "object")
-    { 
-        module.exports = factory;
+    {
+        module.exports = factory();
     }
 	else if (typeof define === "function")  // AMD/CMD/Sea.js
 	{
         if (define.amd) // for Require.js
         {
             /* Require.js define replace */
-        } 
+        }
         else 
         {
 		    define(["jquery"], factory);  // for Sea.js
         }
-	} 
+	}
 	else
-	{ 
+	{
         window.editormd = factory();
 	}
-    
-}(function() {    
+
+}(function() {  
 
     /* Require.js assignment replace */
-    
+
     "use strict";
-    
-    var $ = (typeof (jQuery) !== "undefined") ? jQuery : Zepto;
+
+    var $ = (typeof (window.jQuery) !== "undefined") ? window.jQuery : window.Zepto;
 
 	if (typeof ($) === "undefined") {
 		return ;
 	}
-    
+
     /**
      * editormd
      * 
@@ -2744,8 +2791,18 @@ const editorEmojiRenderer = function(text) {
             }
             
             var classPrefix      = this.classPrefix  = editormd.classPrefix; 
-            var settings         = this.settings     = $.extend(true, editormd.defaults, options);
-            
+            var settings         = $.extend(true, {}, editormd.defaults, options);
+
+            if (options.imageFormats) {
+                settings.imageFormats = options.imageFormats;
+            }
+
+            if (options.emojiCategories) {
+                settings.emojiCategories = options.emojiCategories;
+            }
+
+            this.settings        = settings;
+
             id                   = (typeof id === "object") ? settings.id : id;
             
             var editor           = this.editor       = $("#" + id);
@@ -2832,9 +2889,9 @@ const editorEmojiRenderer = function(text) {
             
             if (typeof define === "function" && define.amd)
             {
-                if (typeof katex !== "undefined") 
+                if (typeof window.katex !== "undefined") 
                 {
-                    editormd.$katex = katex;
+                    editormd.$katex = window.katex;
                 }
                 
                 if (settings.searchReplace && !settings.readOnly) 
@@ -2843,20 +2900,20 @@ const editorEmojiRenderer = function(text) {
                     editormd.loadCSS(settings.path + "codemirror/addon/search/matchesonscrollbar");
                 }
             }
-            
+
             if ((typeof define === "function" && define.amd) || !settings.autoLoadModules)
             {
-                if (typeof CodeMirror !== "undefined") {
-                    editormd.$CodeMirror = CodeMirror;
+                if (typeof window.CodeMirror !== "undefined") {
+                    editormd.$CodeMirror = window.CodeMirror;
                 }
-                
-                if (typeof marked     !== "undefined") {
-                    editormd.$marked     = marked;
+
+                if (typeof window.marked !== "undefined") {
+                    editormd.$marked = window.marked;
                 }
-                
+
                 this.setCodeMirror().setToolbar().loadedDisplay();
             } 
-            else 
+            else
             {
                 this.loadQueues();
             }
@@ -3025,7 +3082,6 @@ const editorEmojiRenderer = function(text) {
             }
             
             var cm       = this.cm;
-            var editor   = this.editor;
             var count    = cm.lineCount();
             var preview  = this.preview;
             
@@ -3516,6 +3572,10 @@ const editorEmojiRenderer = function(text) {
             {
                 previewContainer.html(newMarkdownDoc);
 
+                previewContainer.find(".task-list-item").each(function () {
+                    $(this).parent().addClass("task-list");
+                });
+
                 this.previewCodeHighlight();
                 
                 if (settings.toc) 
@@ -3732,7 +3792,7 @@ const editorEmojiRenderer = function(text) {
 
     // Emoji graphics files url path
     editormd.emoji     = {
-        path  : "http://www.emoji-cheat-sheet.com/graphics/emojis/",
+        path  : "https://www.webpagefx.com/tools/emoji-cheat-sheet/graphics/emojis/",
         ext   : ".png"
     };
 
@@ -3764,7 +3824,8 @@ const editorEmojiRenderer = function(text) {
             flowChart            : false,          // flowChart.js only support IE9+
             sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
         };
-        
+
+        var _headingIds     = [];
         var settings        = $.extend(defaults, options || {});    
         var marked          = editormd.$marked;
         var markedRenderer  = new marked.Renderer();
@@ -3780,7 +3841,20 @@ const editorEmojiRenderer = function(text) {
         var editormdLogoReg = regexs.editormdLogo;
         var pageBreakReg    = regexs.pageBreak;
 
-        markedRenderer.emoji = editorEmojiRenderer;
+        const emojiRenderer = new EditorEmojiRenderer({
+            faIconReg: regexs.fontAwesome,
+            emojiReg: regexs.emoji,
+            editormdLogoReg: regexs.editormdLogo,
+            twemojiReg      :regexs.twemoji
+        });
+
+        markedRenderer.emoji = (text) => {
+            
+            if (!settings.emoji) {
+                return text;
+            }
+            return emojiRenderer.execute(text);
+        };
 
         markedRenderer.atLink = function(text) {
 
@@ -3809,47 +3883,18 @@ const editorEmojiRenderer = function(text) {
 
             return text;
         };
-                
-        markedRenderer.link = function (href, title, text) {
 
-            if (this.options.sanitize) {
-                try {
-                    var prot = decodeURIComponent(unescape(href)).replace(/[^\w:]/g,"").toLowerCase();
-                } catch(e) {
-                    return "";
-                }
-
-                if (prot.indexOf("javascript:") === 0) {
-                    return "";
-                }
-            }
-
-            var out = "<a href=\"" + href + "\"";
-            
-            if (atLinkReg.test(title) || atLinkReg.test(text))
-            {
-                if (title)
-                {
-                    out += " title=\"" + title.replace(/@/g, "&#64;");
-                }
-                
-                return out + "\">" + text.replace(/@/g, "&#64;") + "</a>";
-            }
-
-            if (title) {
-                out += " title=\"" + title + "\"";
-            }
-
-            out += ">" + text + "</a>";
-
-            return out;
-        };
+        const linkRenderer = new LinkRenderer({ atLinkReg: regexs.atLink, sanitize: this.sanitize });
+        markedRenderer.link = function (href, title, text) { 
+            return linkRenderer.execute(href, title, text);
+        }
         
-        markedRenderer.heading = function(text, level, raw) {
-                    
+
+        markedRenderer.heading = function(text, level) {
+
             var linkText       = text;
             var hasLinkReg     = /\s*\<a\s*href\=\"(.*)\"\s*([^\>]*)\>(.*)\<\/a\>\s*/;
-            var getLinkTextReg = /\s*\<a\s*([^\>]+)\>([^\>]*)\<\/a\>\s*/g;
+            // var getLinkTextReg = /\s*\<a\s*([^\>]+)\>([^\>]*)\<\/a\>\s*/g;
 
             if (hasLinkReg.test(text)) 
             {
@@ -3866,7 +3911,8 @@ const editorEmojiRenderer = function(text) {
             
             text = editormd.trim(text);
             
-            var escapedText    = text.toLowerCase().replace(/[^\w]+/g, "-");
+            var escapedText = text.toLowerCase().replace(/[^\w]+/g, "-");
+
             var toc = {
                 text  : text,
                 level : level,
@@ -3875,6 +3921,14 @@ const editorEmojiRenderer = function(text) {
             
             var isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
             var id        = (isChinese) ? escape(text).replace(/\%/g, "") : text.toLowerCase().replace(/[^\w]+/g, "-");
+
+            if (_headingIds.indexOf(id) >= 0) {
+                id += editormd.rand(100, 999999);
+            }
+
+            _headingIds.push(id);
+
+            toc.id = id;
 
             markdownToC.push(toc);
             
@@ -3921,7 +3975,7 @@ const editorEmojiRenderer = function(text) {
                            : ( (pageBreakReg.test(text)) ? this.pageBreak(text) : "<p" + isTeXAddClass + ">" + this.atLink(this.emoji(text)) + "</p>\n" );
         };
 
-        markedRenderer.code = function (code, lang, escaped) { 
+        markedRenderer.code = function (code, lang) {
 
             if (lang === "seq" || lang === "sequence")
             {
@@ -3949,16 +4003,12 @@ const editorEmojiRenderer = function(text) {
             return tag + this.atLink(this.emoji(content)) + "</" + type + ">\n";
         };
 
-        markedRenderer.listitem = function(text) {
-            if (settings.taskList && /^\s*\[[x\s]\]\s*/.test(text)) 
-            {
-                text = text.replace(/^\s*\[\s\]\s*/, "<input type=\"checkbox\" class=\"task-list-item-checkbox\" /> ")
-                           .replace(/^\s*\[x\]\s*/,  "<input type=\"checkbox\" class=\"task-list-item-checkbox\" checked disabled /> ");
+        markedRenderer.listitem = function(text, task) {
+            if (settings.taskList && task) {
+                text = text.replace("<input ", "<input class='task-list-item-checkbox' ");
 
-                return "<li style=\"list-style: none;\">" + this.atLink(this.emoji(text)) + "</li>";
-            }
-            else 
-            {
+                return "<li class=\"task-list-item\">" + this.atLink(this.emoji(text)) + "</li>";
+            } else {
                 return "<li>" + this.atLink(this.emoji(text)) + "</li>";
             }
         };
@@ -3974,11 +4024,13 @@ const editorEmojiRenderer = function(text) {
      * @param   {Array}    toc             从marked获取的TOC数组列表
      * @param   {Element}  container       插入TOC的容器元素
      * @param   {Integer}  startLevel      Hx 起始层级
+     * @param   {object}   markedRenderer  Marked Renderer
      * @returns {Object}   tocContainer    返回ToC列表容器层的jQuery对象元素
      */
     
-    editormd.markdownToCRenderer = function(toc, container, tocDropdown, startLevel) {
-        
+    editormd.markdownToCRenderer = function(toc, container, tocDropdown, startLevel, markedRenderer) {
+        markedRenderer = markedRenderer || null;
+
         var html        = "";    
         var lastLevel   = 0;
         var classPrefix = this.classPrefix;
@@ -4007,7 +4059,15 @@ const editorEmojiRenderer = function(text) {
                 html += "</ul></li>";
             }
 
-            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + text + "\" level=\"" + level + "\">" + text + "</a><ul>";
+            // fixed https://github.com/pandao/editor.md/issues/476
+            // fixed https://github.com/pandao/editor.md/issues/649
+            var href = text.replace(/(<([^>]+)>)/ig, ""); // /<[^>]*>/g
+
+            if (markedRenderer) {
+                text = markedRenderer.emoji(text); // Fixed Heading can't has emoji code
+            }
+
+            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + href + "\" level=\"" + level + "\">" + text + "</a><ul>";
             lastLevel = level;
         }
         
@@ -4112,7 +4172,7 @@ const editorEmojiRenderer = function(text) {
     editormd.filterHTMLTags = function(html, filters) {
         
         if (typeof html !== "string") {
-            html = new String(html);
+            html = html.toString();
         }
             
         if (typeof filters !== "string") {
@@ -4150,7 +4210,14 @@ const editorEmojiRenderer = function(text) {
                     var $attrs = {};
                     
                     $.each(_attrs, function(i, e) {
-                        if (e.nodeName !== '"') $attrs[e.nodeName] = e.nodeValue;
+                        if (e.nodeName !== "\"") {
+                            $attrs[e.nodeName] = e.nodeValue;
+
+                            // Fixed like <a href="javascript:alert('xss')"></a> XSS problem, Copy from pull request #532
+                            if (e.nodeName === "href" && e.nodeValue.toLowerCase().indexOf("javascript:") >= 0) {
+                                $attrs[e.nodeName] = "javascript:;";
+                            }
+                        }
                     });
                     
                     $.each($attrs, function(i) {                        
@@ -4221,9 +4288,9 @@ const editorEmojiRenderer = function(text) {
         editormd.$marked  = marked;
 
         var div           = $("#" + id);
-        var settings      = div.settings = $.extend(true, defaults, options || {});
+        var settings      = div.settings = $.extend(true, {}, defaults, options || {});
         var saveTo        = div.find("textarea");
-        
+
         if (saveTo.length < 1)
         {
             div.append("<textarea></textarea>");
@@ -4258,13 +4325,13 @@ const editorEmojiRenderer = function(text) {
             smartLists  : true,
             smartypants : true
         };
-        
-		markdownDoc = new String(markdownDoc);
-        
+
+        markdownDoc = markdownDoc.toString();
+
         var markdownParsed = marked(markdownDoc, markedOptions);
-        
+
         markdownParsed = editormd.filterHTMLTags(markdownParsed, settings.htmlDecode);
-        
+
         if (settings.markdownSourceCode) {
             saveTo.text(markdownDoc);
         } else {
@@ -4272,6 +4339,10 @@ const editorEmojiRenderer = function(text) {
         }
         
         div.addClass("markdown-body " + this.classPrefix + "html-preview").append(markdownParsed);
+
+        div.find(".task-list-item").each(function () {
+            $(this).parent().addClass("task-list");
+        });
         
         var tocContainer = (settings.tocContainer !== "") ? $(settings.tocContainer) : div;
         
@@ -4298,7 +4369,7 @@ const editorEmojiRenderer = function(text) {
         if (settings.previewCodeHighlight) 
         {
             div.find("pre").addClass("prettyprint linenums");
-            prettyPrint();
+            window.prettyPrint();
         }
         
         if (!editormd.isIE8) 
@@ -4308,7 +4379,11 @@ const editorEmojiRenderer = function(text) {
             }
 
             if (settings.sequenceDiagram) {
-                div.find(".sequence-diagram").sequenceDiagram({theme: "simple"});
+                var $sequenceDiagram = div.find(".sequence-diagram");
+
+                if ($sequenceDiagram.length > 0) {
+                    $sequenceDiagram.sequenceDiagram({theme: "simple"});
+                }
             }
         }
 
@@ -4405,6 +4480,7 @@ const editorEmojiRenderer = function(text) {
             title : "",
             drag  : true,
             closed : true,
+            cached : false,
             content : "",
             mask : true,
             maskStyle : {
@@ -4423,8 +4499,6 @@ const editorEmojiRenderer = function(text) {
         var classPrefix  = editormd.classPrefix;
         var guid         = (new Date()).getTime();
         var dialogName   = ( (options.name === "") ? classPrefix + "dialog-" + guid : options.name);
-        var mouseOrTouch = editormd.mouseOrTouch;
-
         var html         = "<div class=\"" + classPrefix + "dialog " + dialogName + "\">";
 
         if (options.title !== "")
@@ -4447,7 +4521,6 @@ const editorEmojiRenderer = function(text) {
         }
 
         html += "</div>";
-
         html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-bg\"></div>";
         html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-con\"></div>";
         html += "</div>";
@@ -4510,8 +4583,12 @@ const editorEmojiRenderer = function(text) {
 
         $(window).resize(dialogPosition);
 
-        dialog.children("." + classPrefix + "dialog-close").bind(mouseOrTouch("click", "touchend"), function() {
+        dialog.children("." + classPrefix + "dialog-close").bind("click", function() {
             dialog.hide().lockScreen(false).hideMask();
+
+            if (!options.cached) {
+                dialog.remove();
+            }
         });
 
         if (typeof options.buttons === "object")
@@ -4525,7 +4602,7 @@ const editorEmojiRenderer = function(text) {
 
                 footer.append("<button class=\"" + classPrefix + "btn " + btnClassName + "\">" + btn[0] + "</button>");
                 btn[1] = $.proxy(btn[1], dialog);
-                footer.children("." + btnClassName).bind(mouseOrTouch("click", "touchend"), btn[1]);
+                footer.children("." + btnClassName).bind("click", btn[1]);
             }
         }
 
@@ -4535,26 +4612,18 @@ const editorEmojiRenderer = function(text) {
             var dialogHeader = dialog.children("." + classPrefix + "dialog-header");
 
             if (!options.mask) {
-                dialogHeader.bind(mouseOrTouch("click", "touchend"), function(){
+                dialogHeader.bind("click", function(){
                     editormd.dialogZindex += 2;
                     dialog.css("z-index", editormd.dialogZindex);
                 });
             }
-
-            dialogHeader.mousedown(function(e) {
-                e = e || window.event;  //IE
-                posX = e.clientX - parseInt(dialog[0].style.left);
-                posY = e.clientY - parseInt(dialog[0].style.top);
-
-                document.onmousemove = moveAction;                   
-            });
 
             var userCanSelect = function (obj) {
                 obj.removeClass(classPrefix + "user-unselect").off("selectstart");
             };
 
             var userUnselect = function (obj) {
-                obj.addClass(classPrefix + "user-unselect").on("selectstart", function(event) { // selectstart for IE                        
+                obj.addClass(classPrefix + "user-unselect").on("selectstart", function() { // selectstart for IE                        
                     return false;
                 });
             };
@@ -4593,6 +4662,14 @@ const editorEmojiRenderer = function(text) {
                 dialog[0].style.left = left + "px";
                 dialog[0].style.top  = top + "px";
             };
+
+            dialogHeader.mousedown(function(e) {
+                e = e || window.event;  //IE
+                posX = e.clientX - parseInt(dialog[0].style.left);
+                posY = e.clientY - parseInt(dialog[0].style.top);
+
+                document.onmousemove = moveAction;                   
+            });
 
             document.onmouseup = function() {                            
                 userCanSelect($("body"));
@@ -4660,7 +4737,6 @@ const editorEmojiRenderer = function(text) {
     
     editormd = Object.assign(editormd, editorDate);
 
-console.log(`=== constructor editormd`,{editormd})
     return editormd;
 
 }));

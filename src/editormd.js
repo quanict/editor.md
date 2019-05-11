@@ -125,6 +125,10 @@
                 settings.imageFormats = options.imageFormats;
             }
 
+            if (options.emojiCategories) {
+                settings.emojiCategories = options.emojiCategories;
+            }
+
             this.settings        = settings;
 
             id                   = (typeof id === "object") ? settings.id : id;
@@ -1165,7 +1169,20 @@
         var editormdLogoReg = regexs.editormdLogo;
         var pageBreakReg    = regexs.pageBreak;
 
-        markedRenderer.emoji = editorEmojiRenderer;
+        const emojiRenderer = new EditorEmojiRenderer({
+            faIconReg: regexs.fontAwesome,
+            emojiReg: regexs.emoji,
+            editormdLogoReg: regexs.editormdLogo,
+            twemojiReg      :regexs.twemoji
+        });
+
+        markedRenderer.emoji = (text) => {
+            
+            if (!settings.emoji) {
+                return text;
+            }
+            return emojiRenderer.execute(text);
+        };
 
         markedRenderer.atLink = function(text) {
 
@@ -1194,41 +1211,12 @@
 
             return text;
         };
-                
-        markedRenderer.link = function (href, title, text) {
 
-            if (this.options.sanitize) {
-                try {
-                    var prot = decodeURIComponent(unescape(href)).replace(/[^\w:]/g, "").toLowerCase();
-
-                    if (prot.indexOf("javascript:") === 0) {
-                        return "";
-                    }
-                } catch(e) {
-                    return "";
-                }
-            }
-
-            var out = "<a href=\"" + href + "\"";
-            
-            if (atLinkReg.test(title) || atLinkReg.test(text))
-            {
-                if (title)
-                {
-                    out += " title=\"" + title.replace(/@/g, "&#64;");
-                }
-                
-                return out + "\">" + text.replace(/@/g, "&#64;") + "</a>";
-            }
-
-            if (title) {
-                out += " title=\"" + title + "\"";
-            }
-
-            out += ">" + text + "</a>";
-
-            return out;
-        };
+        const linkRenderer = new LinkRenderer({ atLinkReg: regexs.atLink, sanitize: this.sanitize });
+        markedRenderer.link = function (href, title, text) { 
+            return linkRenderer.execute(href, title, text);
+        }
+        
 
         markedRenderer.heading = function(text, level) {
 
@@ -1368,8 +1356,9 @@
      * @returns {Object}   tocContainer    返回ToC列表容器层的jQuery对象元素
      */
     
-    editormd.markdownToCRenderer = function(toc, container, tocDropdown, startLevel) {
-        
+    editormd.markdownToCRenderer = function(toc, container, tocDropdown, startLevel, markedRenderer) {
+        markedRenderer = markedRenderer || null;
+
         var html        = "";    
         var lastLevel   = 0;
         var classPrefix = this.classPrefix;
@@ -2076,7 +2065,6 @@
     
     editormd = Object.assign(editormd, editorDate);
 
-console.log(`=== constructor editormd`,{editormd})
     return editormd;
 
 }));
