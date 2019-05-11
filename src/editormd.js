@@ -1364,6 +1364,7 @@
      * @param   {Array}    toc             从marked获取的TOC数组列表
      * @param   {Element}  container       插入TOC的容器元素
      * @param   {Integer}  startLevel      Hx 起始层级
+     * @param   {object}   markedRenderer  Marked Renderer
      * @returns {Object}   tocContainer    返回ToC列表容器层的jQuery对象元素
      */
     
@@ -1397,7 +1398,15 @@
                 html += "</ul></li>";
             }
 
-            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + text + "\" level=\"" + level + "\">" + text + "</a><ul>";
+            // fixed https://github.com/pandao/editor.md/issues/476
+            // fixed https://github.com/pandao/editor.md/issues/649
+            var href = text.replace(/(<([^>]+)>)/ig, ""); // /<[^>]*>/g
+
+            if (markedRenderer) {
+                text = markedRenderer.emoji(text); // Fixed Heading can't has emoji code
+            }
+
+            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + href + "\" level=\"" + level + "\">" + text + "</a><ul>";
             lastLevel = level;
         }
         
@@ -1542,6 +1551,11 @@
                     $.each(_attrs, function(i, e) {
                         if (e.nodeName !== "\"") {
                             $attrs[e.nodeName] = e.nodeValue;
+
+                            // Fixed like <a href="javascript:alert('xss')"></a> XSS problem, Copy from pull request #532
+                            if (e.nodeName === "href" && e.nodeValue.toLowerCase().indexOf("javascript:") >= 0) {
+                                $attrs[e.nodeName] = "javascript:;";
+                            }
                         }
                     });
                     
