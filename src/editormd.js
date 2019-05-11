@@ -1718,7 +1718,11 @@
             }
 
             if (settings.sequenceDiagram) {
-                div.find(".sequence-diagram").sequenceDiagram({theme: "simple"});
+                var $sequenceDiagram = div.find(".sequence-diagram");
+
+                if ($sequenceDiagram.length > 0) {
+                    $sequenceDiagram.sequenceDiagram({theme: "simple"});
+                }
             }
         }
 
