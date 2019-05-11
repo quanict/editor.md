@@ -119,8 +119,14 @@
             }
             
             var classPrefix      = this.classPrefix  = editormd.classPrefix; 
-            var settings         = this.settings     = $.extend(true, {}, editormd.defaults, options);
-            
+            var settings         = $.extend(true, {}, editormd.defaults, options);
+
+            if (options.imageFormats) {
+                settings.imageFormats = options.imageFormats;
+            }
+
+            this.settings        = settings;
+
             id                   = (typeof id === "object") ? settings.id : id;
             
             var editor           = this.editor       = $("#" + id);
@@ -1674,7 +1680,7 @@
         if (settings.previewCodeHighlight) 
         {
             div.find("pre").addClass("prettyprint linenums");
-            prettyPrint();
+            window.prettyPrint();
         }
         
         if (!editormd.isIE8) 
