@@ -1148,7 +1148,8 @@
             flowChart            : false,          // flowChart.js only support IE9+
             sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
         };
-        
+
+        var _headingIds     = [];
         var settings        = $.extend(defaults, options || {});    
         var marked          = editormd.$marked;
         var markedRenderer  = new marked.Renderer();
@@ -1250,7 +1251,8 @@
             
             text = editormd.trim(text);
             
-            var escapedText    = text.toLowerCase().replace(/[^\w]+/g, "-");
+            var escapedText = text.toLowerCase().replace(/[^\w]+/g, "-");
+
             var toc = {
                 text  : text,
                 level : level,
@@ -1259,6 +1261,14 @@
             
             var isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
             var id        = (isChinese) ? escape(text).replace(/\%/g, "") : text.toLowerCase().replace(/[^\w]+/g, "-");
+
+            if (_headingIds.indexOf(id) >= 0) {
+                id += editormd.rand(100, 999999);
+            }
+
+            _headingIds.push(id);
+
+            toc.id = id;
 
             markdownToC.push(toc);
             
