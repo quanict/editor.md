@@ -96,6 +96,10 @@ gulp.task("js", function() {
 
     task = task.pipe(concat('editormd.js'));
     
+    // task = task.pipe(uglify().on('error', console.error));
+    task.on('error', function (err) { console.log( err ) })
+
+
 
     //  javascript-obfuscator
     // task.pipe(javascriptObfuscator({
@@ -121,8 +125,9 @@ gulp.task("js", function() {
         ext: {
             min: '.min.js'
         },
-        ignoreFiles: ['-min.js']
-    })).pipe(distPath);
+        ignoreFiles: ['min.js']
+    }));
+    task.pipe(distPath);
 
     // task.pipe(header(headerMiniComment, {pkg : pkg, fileName : function(file) {
     //     var name = file.path.split(file.base + ( (os.platform() === "win32") ? "\\" : "/") );

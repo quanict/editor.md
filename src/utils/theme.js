@@ -1,6 +1,33 @@
 
 var editorTheme = {
 
+    // Editor.md themes, change toolbar themes etc.
+    // added @1.5.0
+    themes        : ["default", "dark"],
+    
+    // Preview area themes
+    // added @1.5.0
+    previewThemes : ["default", "dark"],
+
+     // CodeMirror / editor area themes
+    // @1.5.0 rename -> editorThemes, old version -> themes
+    editorThemes : [
+        "default", "3024-day", "3024-night",
+        "ambiance", "ambiance-mobile",
+        "base16-dark", "base16-light", "blackboard",
+        "cobalt",
+        "eclipse", "elegant", "erlang-dark",
+        "lesser-dark",
+        "mbo", "mdn-like", "midnight", "monokai",
+        "neat", "neo", "night",
+        "paraiso-dark", "paraiso-light", "pastel-on-dark",
+        "rubyblue",
+        "solarized",
+        "the-matrix", "tomorrow-night-eighties", "twilight",
+        "vibrant-ink",
+        "xq-dark", "xq-light"
+    ],
+
     /**
      * 设置 Editor.md 的整体主题，主要是工具栏
      * Setting Editor.md theme

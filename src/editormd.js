@@ -1076,37 +1076,16 @@
      * @returns {void}
      */
 
-    editormd.dialogLockScreen = function() {
-        var settings = this.settings || {dialogLockScreen : true};
+    // editormd.dialogLockScreen = function() {
+    //     var settings = this.settings || {dialogLockScreen : true};
         
-        if (settings.dialogLockScreen) 
-        {            
-            $("html,body").css("overflow", "hidden");
-            this.resize();
-        }
-    };
+    //     if (settings.dialogLockScreen) 
+    //     {            
+    //         $("html,body").css("overflow", "hidden");
+    //         this.resize();
+    //     }
+    // };
    
-    /**
-     * 显示透明背景层
-     * Display mask layer when dialog opening
-     * 
-     * @param   {Object}     dialog    dialog jQuery object
-     * @returns {void}
-     */
-    
-    editormd.dialogShowMask = function(dialog) {
-        var editor   = this.editor;
-        var settings = this.settings || {dialogShowMask : true};
-        
-        dialog.css({
-            top  : ($(window).height() - dialog.height()) / 2 + "px",
-            left : ($(window).width()  - dialog.width())  / 2 + "px"
-        });
-
-        if (settings.dialogShowMask) {
-            editor.children("." + this.classPrefix + "mask").css("z-index", parseInt(dialog.css("z-index")) - 1).show();
-        }
-    };
 
     editormd = Object.assign(editormd, editorToolbarHandlers);
     editormd = Object.assign(editormd, editorKeyMaps);
@@ -1153,7 +1132,7 @@
             sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
         };
 
-        var _headingIds     = [];
+        
         var settings        = $.extend(defaults, options || {});    
         var marked          = editormd.$marked;
         var markedRenderer  = new marked.Renderer();
@@ -1161,12 +1140,8 @@
             
         var regexs          = editormd.regexs;
         var atLinkReg       = regexs.atLink;
-        var emojiReg        = regexs.emoji;
         var emailReg        = regexs.email;
         var emailLinkReg    = regexs.emailLink;
-        var twemojiReg      = regexs.twemoji;
-        var faIconReg       = regexs.fontAwesome;
-        var editormdLogoReg = regexs.editormdLogo;
         var pageBreakReg    = regexs.pageBreak;
 
         const emojiRenderer = new EditorEmojiRenderer({
@@ -1177,105 +1152,41 @@
         });
 
         markedRenderer.emoji = (text) => {
-            
             if (!settings.emoji) {
                 return text;
             }
             return emojiRenderer.execute(text);
         };
 
-        markedRenderer.atLink = function(text) {
-
-            if (atLinkReg.test(text))
-            { 
-                if (settings.atLink) 
-                {
-                    text = text.replace(emailReg, function($1, $2, $3, $4) {
-                        return $1.replace(/@/g, "_#_&#64;_#_");
-                    });
-
-                    text = text.replace(atLinkReg, function($1, $2) {
-                        return "<a href=\"" + editormd.urls.atLinkBase + "" + $2 + "\" title=\"&#64;" + $2 + "\" class=\"at-link\">" + $1 + "</a>";
-                    }).replace(/_#_&#64;_#_/g, "@");
-                }
-                
-                if (settings.emailLink)
-                {
-                    text = text.replace(emailLinkReg, function($1, $2, $3, $4, $5) {
-                        return (!$2 && $.inArray($5, "jpg|jpeg|png|gif|webp|ico|icon|pdf".split("|")) < 0) ? "<a href=\"mailto:" + $1 + "\">"+$1+"</a>" : $1;
-                    });
-                }
-
-                return text;
-            }
-
-            return text;
-        };
-
+        const atLinkRenderer = new AtLinkRenderer({ 
+            atLinkReg: regexs.atLink, 
+            emailReg: regexs.emailReg,
+            emailLinkReg: regexs.emailLinkReg,
+            atLink: settings.atLink,
+            emailLink : settings.emailLink 
+        });
+        markedRenderer.atLink = function (text) { 
+            return atLinkRenderer.execute( text);
+        }
+        
         const linkRenderer = new LinkRenderer({ atLinkReg: regexs.atLink, sanitize: this.sanitize });
         markedRenderer.link = function (href, title, text) { 
             return linkRenderer.execute(href, title, text);
         }
         
-
+        const headingRenderder = new HeadingRenderder({ markdownToC : markdownToC || [], headerPrefix : markedRenderer.options.headerPrefix });
         markedRenderer.heading = function(text, level) {
-
-            var linkText       = text;
-            var hasLinkReg     = /\s*\<a\s*href\=\"(.*)\"\s*([^\>]*)\>(.*)\<\/a\>\s*/;
-            // var getLinkTextReg = /\s*\<a\s*([^\>]+)\>([^\>]*)\<\/a\>\s*/g;
-
-            if (hasLinkReg.test(text)) 
-            {
-                var tempText = [];
-                text         = text.split(/\<a\s*([^\>]+)\>([^\>]*)\<\/a\>/);
-
-                for (var i = 0, len = text.length; i < len; i++)
-                {
-                    tempText.push(text[i].replace(/\s*href\=\"(.*)\"\s*/g, ""));
-                }
-
-                text = tempText.join(" ");
-            }
-            
-            text = editormd.trim(text);
-            
-            var escapedText = text.toLowerCase().replace(/[^\w]+/g, "-");
-
-            var toc = {
-                text  : text,
-                level : level,
-                slug  : escapedText
-            };
-            
-            var isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
-            var id        = (isChinese) ? escape(text).replace(/\%/g, "") : text.toLowerCase().replace(/[^\w]+/g, "-");
-
-            if (_headingIds.indexOf(id) >= 0) {
-                id += editormd.rand(100, 999999);
-            }
-
-            _headingIds.push(id);
-
-            toc.id = id;
-
-            markdownToC.push(toc);
-            
-            var headingHTML = "<h" + level + " id=\"h"+ level + "-" + this.options.headerPrefix + id +"\">";
-            
-            headingHTML    += "<a name=\"" + text + "\" class=\"reference-link\"></a>";
-            headingHTML    += "<span class=\"header-link octicon octicon-link\"></span>";
-            headingHTML    += (hasLinkReg) ? this.atLink(this.emoji(linkText)) : this.atLink(this.emoji(text));
-            headingHTML    += "</h" + level + ">";
-
-            return headingHTML;
+            // return headingRenderder.execute(text, level);
         };
+
+        console.log( `=====`, {markedRenderer, marked, editormd});
+        console.trace();
         
         markedRenderer.pageBreak = function(text) {
             if (pageBreakReg.test(text) && settings.pageBreak)
             {
                 text = "<hr style=\"page-break-after:always;\" class=\"page-break editormd-page-break\" />";
             }
-            
             return text;
         };
 
@@ -1319,7 +1230,6 @@
             } 
             else 
             {
-
                 return marked.Renderer.prototype.code.apply(this, arguments);
             }
         };
@@ -1746,32 +1656,7 @@
         return div;
     };
     
-    // Editor.md themes, change toolbar themes etc.
-    // added @1.5.0
-    editormd.themes        = ["default", "dark"];
     
-    // Preview area themes
-    // added @1.5.0
-    editormd.previewThemes = ["default", "dark"];
-    
-    // CodeMirror / editor area themes
-    // @1.5.0 rename -> editorThemes, old version -> themes
-    editormd.editorThemes = [
-        "default", "3024-day", "3024-night",
-        "ambiance", "ambiance-mobile",
-        "base16-dark", "base16-light", "blackboard",
-        "cobalt",
-        "eclipse", "elegant", "erlang-dark",
-        "lesser-dark",
-        "mbo", "mdn-like", "midnight", "monokai",
-        "neat", "neo", "night",
-        "paraiso-dark", "paraiso-light", "pastel-on-dark",
-        "rubyblue",
-        "solarized",
-        "the-matrix", "tomorrow-night-eighties", "twilight",
-        "vibrant-ink",
-        "xq-dark", "xq-light"
-    ];
 
     editormd.isIE    = (navigator.appName == "Microsoft Internet Explorer");
     editormd.isIE8   = (editormd.isIE && navigator.appVersion.match(/8./i) == "8.");
@@ -2062,7 +1947,19 @@
 
         return eventType;
     };
-    
+
+     /**
+     * 获取指定区间的随机整数
+     *
+     * @return {Int}   int    返回随机生成的整数
+     */
+
+    editormd.rand = function (n, m) {
+        var c = m - n + 1;
+
+        return Math.floor(Math.random() * c + n);
+    };
+
     editormd = Object.assign(editormd, editorDate);
 
     return editormd;
