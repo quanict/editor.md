@@ -37,8 +37,8 @@
     /**
      * editormd
      * 
-     * @param   {String} id           编辑器的ID
-     * @param   {Object} options      配置选项 Key/Value
+     * @param   {String} id           ID of the editor element
+     * @param   {Object} options      Configuration options Key/Value
      * @returns {Object} editormd     返回editormd对象
      */
     
@@ -110,9 +110,7 @@
          */
         
         init : function (id, options) {
-            
             options              = options || {};
-            
             if (typeof id === "object")
             {
                 options = id;
@@ -132,12 +130,10 @@
             this.settings        = settings;
 
             id                   = (typeof id === "object") ? settings.id : id;
-            
             var editor           = this.editor       = $("#" + id);
-            
             this.id              = id;
             this.lang            = settings.lang;
-            
+
             var classNames       = this.classNames   = {
                 textarea : {
                     html     : classPrefix + "html-textarea",
@@ -266,7 +262,6 @@
                 if (editormd.isIE8) 
                 {
                     _this.loadedDisplay();
-                    
                     return ;
                 }
 
@@ -366,31 +361,7 @@
             return this;
         },
         
-        /**
-         * 添加 CodeMirror 键盘快捷键
-         * Add CodeMirror keyboard shortcuts key map
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
         
-        addKeyMap : function(map, bottom) {
-            this.cm.addKeyMap(map, bottom);
-            
-            return this;
-        },
-        
-        /**
-         * 移除 CodeMirror 键盘快捷键
-         * Remove CodeMirror keyboard shortcuts key map
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        removeKeyMap : function(map) {
-            this.cm.removeKeyMap(map);
-            
-            return this;
-        },
         
         /**
          * 跳转到指定的行
@@ -475,52 +446,7 @@
             return this;
         },
         
-        /**
-         * 扩展当前实例对象，可同时设置多个或者只设置一个
-         * Extend editormd instance object, can mutil setting.
-         * 
-         * @returns {editormd}                  this(editormd instance object.)
-         */
         
-        extend : function() {
-            if (typeof arguments[1] !== "undefined")
-            {
-                if (typeof arguments[1] === "function")
-                {
-                    arguments[1] = $.proxy(arguments[1], this);
-                }
-
-                this[arguments[0]] = arguments[1];
-            }
-            
-            if (typeof arguments[0] === "object" && typeof arguments[0].length === "undefined")
-            {
-                $.extend(true, this, arguments[0]);
-            }
-
-            return this;
-        },
-        
-        /**
-         * 设置或扩展当前实例对象，单个设置
-         * Extend editormd instance object, one by one
-         * 
-         * @param   {String|Object}   key       option key
-         * @param   {String|Object}   value     option value
-         * @returns {editormd}                  this(editormd instance object.)
-         */
-        
-        set : function (key, value) {
-            
-            if (typeof value !== "undefined" && typeof value === "function")
-            {
-                value = $.proxy(value, this);
-            }
-            
-            this[key] = value;
-
-            return this;
-        },
         
         /**
          * 重新配置
@@ -565,89 +491,7 @@
             return this;
         },
         
-        /**
-         * 注册键盘快捷键处理
-         * Register CodeMirror keyMaps (keyboard shortcuts).
-         * 
-         * @param   {Object}    keyMap      KeyMap key/value {"(Ctrl/Shift/Alt)-Key" : function(){}}
-         * @returns {editormd}              return this
-         */
         
-        registerKeyMaps : function(keyMap) {
-            
-            var _this           = this;
-            var cm              = this.cm;
-            var settings        = this.settings;
-            var toolbarHandlers = editormd.toolbarHandlers;
-            var disabledKeyMaps = settings.disabledKeyMaps;
-            
-            keyMap              = keyMap || null;
-            
-            if (keyMap)
-            {
-                for (var i in keyMap)
-                {
-                    if ($.inArray(i, disabledKeyMaps) < 0)
-                    {
-                        var map = {};
-                        map[i]  = keyMap[i];
-
-                        cm.addKeyMap(keyMap);
-                    }
-                }
-            }
-            else
-            {
-                for (var k in editormd.keyMaps)
-                {
-                    var _keyMap = editormd.keyMaps[k];
-                    var handle = (typeof _keyMap === "string") ? $.proxy(toolbarHandlers[_keyMap], _this) : $.proxy(_keyMap, _this);
-                    
-                    if ($.inArray(k, ["F9", "F10", "F11"]) < 0 && $.inArray(k, disabledKeyMaps) < 0)
-                    {
-                        var _map = {};
-                        _map[k] = handle;
-
-                        cm.addKeyMap(_map);
-                    }
-                }
-                
-                $(window).keydown(function(event) {
-                    
-                    var keymaps = {
-                        "120" : "F9",
-                        "121" : "F10",
-                        "122" : "F11"
-                    };
-                    
-                    if ( $.inArray(keymaps[event.keyCode], disabledKeyMaps) < 0 )
-                    {
-                        switch (event.keyCode)
-                        {
-                            case 120:
-                                    $.proxy(toolbarHandlers["watch"], _this)();
-                                    return false;
-                                break;
-                                
-                            case 121:
-                                    $.proxy(toolbarHandlers["preview"], _this)();
-                                    return false;
-                                break;
-                                
-                            case 122:
-                                    $.proxy(toolbarHandlers["fullscreen"], _this)();                        
-                                    return false;
-                                break;
-                                
-                            default:
-                                break;
-                        }
-                    }
-                });
-            }
-
-            return this;
-        },
         
         /**
          * 加载队列完成之后的显示处理
@@ -695,134 +539,9 @@
             return this;
         },
         
-        /**
-         * 设置编辑器的宽度
-         * Set editor width
-         * 
-         * @param   {Number|String} width  编辑器宽度值
-         * @returns {editormd}             返回editormd的实例对象
-         */
         
-        width : function(width) {
-                
-            this.editor.css("width", (typeof width === "number") ? width  + "px" : width);            
-            this.resize();
-            
-            return this;
-        },
         
         /**
-         * 设置编辑器的高度
-         * Set editor height
-         * 
-         * @param   {Number|String} height  编辑器高度值
-         * @returns {editormd}              返回editormd的实例对象
-         */
-        
-        height : function(height) {
-                
-            this.editor.css("height", (typeof height === "number")  ? height  + "px" : height);            
-            this.resize();
-            
-            return this;
-        },
-        
-        /**
-         * 调整编辑器的尺寸和布局
-         * Resize editor layout
-         * 
-         * @param   {Number|String} [width=null]  编辑器宽度值
-         * @param   {Number|String} [height=null] 编辑器高度值
-         * @returns {editormd}                    返回editormd的实例对象
-         */
-        
-        resize : function(width, height) {
-            
-            width  = width  || null;
-            height = height || null;
-            
-            var state      = this.state;
-            var editor     = this.editor;
-            var preview    = this.preview;
-            var toolbar    = this.toolbar;
-            var settings   = this.settings;
-            var codeMirror = this.codeMirror;
-            
-            if (width)
-            {
-                editor.css("width", (typeof width  === "number") ? width  + "px" : width);
-            }
-            
-            if (settings.autoHeight && !state.fullscreen && !state.preview)
-            {
-                editor.css("height", "auto");
-                codeMirror.css("height", "auto");
-            } 
-            else 
-            {
-                if (height) 
-                {
-                    editor.css("height", (typeof height === "number") ? height + "px" : height);
-                }
-                
-                if (state.fullscreen)
-                {
-                    editor.height($(window).height());
-                }
-
-                if (settings.toolbar && !settings.readOnly) 
-                {
-                    codeMirror.css("margin-top", toolbar.height() + 1).height(editor.height() - toolbar.height());
-                } 
-                else
-                {
-                    codeMirror.css("margin-top", 0).height(editor.height());
-                }
-            }
-            
-            if(settings.watch) 
-            {
-                codeMirror.width(editor.width() / 2);
-                preview.width((!state.preview) ? editor.width() / 2 : editor.width());
-                
-                this.previewContainer.css("padding", settings.autoHeight ? "20px 20px 50px 40px" : "20px");
-                
-                if (settings.toolbar && !settings.readOnly) 
-                {
-                    preview.css("top", toolbar.height() + 1);
-                } 
-                else 
-                {
-                    preview.css("top", 0);
-                }
-                
-                if (settings.autoHeight && !state.fullscreen && !state.preview)
-                {
-                    preview.height("");
-                }
-                else
-                {                
-                    var previewHeight = (settings.toolbar && !settings.readOnly) ? editor.height() - toolbar.height() : editor.height();
-                    
-                    preview.height(previewHeight);
-                }
-            } 
-            else 
-            {
-                codeMirror.width(editor.width());
-                preview.hide();
-            }
-            
-            if (state.loaded) 
-            {
-                $.proxy(settings.onresize, this)();
-            }
-
-            return this;
-        },
-        
-        /**
-         * 解析和保存Markdown代码
          * Parse & Saving Markdown source code
          * 
          * @returns {editormd}     返回editormd的实例对象
@@ -965,91 +684,6 @@
 
             return this;
         },
-        
-        /**
-         * 聚焦光标位置
-         * Focusing the cursor position
-         * 
-         * @returns {editormd}         返回editormd的实例对象
-         */
-        
-        focus : function() {
-            this.cm.focus();
-
-            return this;
-        },
-        
-        /**
-         * 设置光标的位置
-         * Set cursor position
-         * 
-         * @param   {Object}    cursor 要设置的光标位置键值对象，例：{line:1, ch:0}
-         * @returns {editormd}         返回editormd的实例对象
-         */
-        
-        setCursor : function(cursor) {
-            this.cm.setCursor(cursor);
-
-            return this;
-        },
-        
-        /**
-         * 获取当前光标的位置
-         * Get the current position of the cursor
-         * 
-         * @returns {Cursor}         返回一个光标Cursor对象
-         */
-        
-        getCursor : function() {
-            return this.cm.getCursor();
-        },
-        
-        
-        /**
-         * 加载并执行插件
-         * Load and execute the plugin
-         * 
-         * @param   {String}     name    plugin name / function name
-         * @param   {String}     path    plugin load path
-         * @returns {editormd}           返回editormd的实例对象
-         */
-        
-        executePlugin : function(name, path) {
-            
-            var _this    = this;
-            var cm       = this.cm;
-            var settings = this.settings;
-            
-            path = settings.pluginPath + path;
-            
-            if (typeof define === "function") 
-            {            
-                if (typeof this[name] === "undefined")
-                {
-                    alert("Error: " + name + " plugin is not found, you are not load this plugin.");
-                    
-                    return this;
-                }
-                
-                this[name](cm);
-                
-                return this;
-            }
-            
-            if ($.inArray(path, editormd.loadFiles.plugin) < 0)
-            {
-                editormd.loadPlugin(path, function() {
-                    editormd.loadPlugins[name] = _this[name];
-                    _this[name](cm);
-                });
-            }
-            else
-            {
-                $.proxy(editormd.loadPlugins[name], this)(cm);
-            }
-            
-            return this;
-        },
     };
 
     // extend theme prototypes
@@ -1066,30 +700,19 @@
     editormd.fn = Object.assign({}, editormd.fn, editorEvents);
     editormd.fn = Object.assign({}, editormd.fn, editorFlowChart);
     editormd.fn = Object.assign({}, editormd.fn, editorHighlight);
+    editormd.fn = Object.assign({}, editormd.fn, editorDimension);
+    editormd.fn = Object.assign({}, editormd.fn, editorPlugin);
+    editormd.fn = Object.assign({}, editormd.fn, editorCursor);
+    editormd.fn = Object.assign({}, editormd.fn, editorExtendObject);
+    editormd.fn = Object.assign({}, editormd.fn, qKeyMap);
 
     editormd.fn.init.prototype = editormd.fn; 
-
-    /**
-     * 锁屏
-     * lock screen when dialog opening
-     * 
-     * @returns {void}
-     */
-
-    // editormd.dialogLockScreen = function() {
-    //     var settings = this.settings || {dialogLockScreen : true};
-        
-    //     if (settings.dialogLockScreen) 
-    //     {            
-    //         $("html,body").css("overflow", "hidden");
-    //         this.resize();
-    //     }
-    // };
-   
 
     editormd = Object.assign(editormd, editorToolbarHandlers);
     editormd = Object.assign(editormd, editorKeyMaps);
     editormd = Object.assign(editormd, editorString);
+    
+    
 
     editormd.urls = {
         atLinkBase : "https://github.com/"
