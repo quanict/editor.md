@@ -3,7 +3,8 @@
 var os           = require("os");
 var gulp         = require("gulp");
 var gutil        = require("gulp-util");
-var sass         = require("gulp-ruby-sass");
+// var sass         = require("gulp-ruby-sass");
+var sass         = require('gulp-sass');
 var jshint       = require("gulp-jshint");
 var uglify       = require("gulp-uglifyjs");
 var rename       = require("gulp-rename");
@@ -43,29 +44,38 @@ var scssTask = function(fileName, path) {
     path = path || "scss/";
     
     var distPath = "css";
-    
-    return sass(path + fileName + ".scss", { style: "expanded", sourcemap: false, noCache : true })
+    console.log(`== scssTask:${path + fileName + ".scss"}`)
+    return gulp.src(path + fileName + ".scss")
+    // sass(path + fileName + ".scss", {
+    //     style: "expanded",
+    //     // sourcemap: false,
+    //     noCache: true
+    // })
+        .pipe(sass())
         .pipe(gulp.dest(distPath))
-        .pipe(header(headerComment, {pkg : pkg, fileName : function(file) { 
-            var name = file.path.split(file.base);
-            return name[1].replace("\\", "");
-        }}))
-       .pipe(gulp.dest(distPath)) 
-       .pipe(rename({ suffix: ".min" }))
-       .pipe(gulp.dest(distPath))
-       .pipe(minifycss())
-       .pipe(gulp.dest(distPath)) 
-        .pipe(header(headerMiniComment, {pkg : pkg, fileName : function(file) { 
-            var name = file.path.split(file.base);
-            return name[1].replace("\\", "");
-        }}))
-       .pipe(gulp.dest(distPath)) 
+    //     .pipe(header(headerComment, {pkg : pkg, fileName : function(file) { 
+    //         var name = file.path.split(file.base);
+    //         return name[1].replace("\\", "");
+    //     }}))
+    //    .pipe(gulp.dest(distPath)) 
+    //    .pipe(rename({ suffix: ".min" }))
+    //    .pipe(gulp.dest(distPath))
+    //    .pipe(minifycss())
+    //    .pipe(gulp.dest(distPath)) 
+        // .pipe(header(headerMiniComment, {pkg : pkg, fileName : function(file) { 
+        //     var name = file.path.split(file.base);
+        //     return name[1].replace("\\", "");
+        // }}))
+    //    .pipe(gulp.dest(distPath)) 
+        
        .pipe(notify({ message: fileName + ".scss task completed!" }));
 };
 
 const jsFiles = [
+    './src/properties/*.js',
     './src/const/*.js',
     './src/utils/*.js',
+    './src/prototype/*.js',
     './src/renderer/*.js',
     './src/editormd.js'
 ];
@@ -394,10 +404,11 @@ gulp.task("jsdoc2md", function() {
 // });
 
 let tasks = [
-    'js'
+    'js',
+    'scss'
 ];
 
 tasks =  gulp.series(tasks);
 
 gulp.task("default", tasks);
-gulp.watch(['src/*.js','src/**/*.js'], tasks) ;
+gulp.watch(['src/*.js','src/**/*.js','scss/*.scss'], tasks) ;

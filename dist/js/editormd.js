@@ -1,3 +1,685 @@
+const editorCodeTree = {
+    files: [],
+    
+    addCodeTree: function (file) {
+        this.files.push(file);
+    }
+};
+/**
+ * 动态创建对话框
+ * Creating custom dialogs
+ * 
+ * @param   {Object} options 配置项键值对 Key/Value
+ * @returns {dialog} 返回创建的dialog的jQuery实例对象
+ */
+
+function editorCreateDialog(options) {
+    var defaults = {
+        name : "",
+        width : 420,
+        height: 240,
+        title : "",
+        drag  : true,
+        closed : true,
+        cached : false,
+        content : "",
+        mask : true,
+        maskStyle : {
+            backgroundColor : "#fff",
+            opacity : 0.1
+        },
+        lockScreen : true,
+        footer : true,
+        buttons : false
+    };
+
+    options          = $.extend(true, defaults, options);
+    
+    var $this        = this;
+    var editor       = this.editor;
+    var classPrefix  = editormd.classPrefix;
+    var guid         = (new Date()).getTime();
+    var dialogName   = ( (options.name === "") ? classPrefix + "dialog-" + guid : options.name);
+    var html         = "<div class=\"" + classPrefix + "dialog " + dialogName + "\">";
+
+    if (options.title !== "")
+    {
+        html += "<div class=\"" + classPrefix + "dialog-header\"" + ( (options.drag) ? " style=\"cursor: move;\"" : "" ) + ">";
+        html += "<strong class=\"" + classPrefix + "dialog-title\">" + options.title + "</strong>";
+        html += "</div>";
+    }
+
+    if (options.closed)
+    {
+        html += "<a href=\"javascript:;\" class=\"fa fa-close " + classPrefix + "dialog-close\"></a>";
+    }
+
+    html += "<div class=\"" + classPrefix + "dialog-container\">" + options.content;                    
+
+    if (options.footer || typeof options.footer === "string") 
+    {
+        html += "<div class=\"" + classPrefix + "dialog-footer\">" + ( (typeof options.footer === "boolean") ? "" : options.footer) + "</div>";
+    }
+
+    html += "</div>";
+    html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-bg\"></div>";
+    html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-con\"></div>";
+    html += "</div>";
+
+    editor.append(html);
+
+    var dialog = editor.find("." + dialogName);
+
+    dialog.lockScreen = function(lock) {
+        if (options.lockScreen)
+        {                
+            $("html,body").css("overflow", (lock) ? "hidden" : "");
+            $this.resize();
+        }
+
+        return dialog;
+    };
+
+    dialog.showMask = function() {
+        if (options.mask)
+        {
+            editor.find("." + classPrefix + "mask").css(options.maskStyle).css("z-index", editormd.dialogZindex - 1).show();
+        }
+        return dialog;
+    };
+
+    dialog.hideMask = function() {
+        if (options.mask)
+        {
+            editor.find("." + classPrefix + "mask").hide();
+        }
+
+        return dialog;
+    };
+
+    dialog.loading = function(show) {                        
+        var loading = dialog.find("." + classPrefix + "dialog-mask");
+        loading[(show) ? "show" : "hide"]();
+
+        return dialog;
+    };
+
+    dialog.lockScreen(true).showMask();
+
+    dialog.show().css({
+        zIndex : editormd.dialogZindex,
+        border : (editormd.isIE8) ? "1px solid #ddd" : "",
+        width  : (typeof options.width  === "number") ? options.width + "px"  : options.width,
+        height : (typeof options.height === "number") ? options.height + "px" : options.height
+    });
+
+    var dialogPosition = function(){
+        dialog.css({
+            top    : ($(window).height() - dialog.height()) / 2 + "px",
+            left   : ($(window).width() - dialog.width()) / 2 + "px"
+        });
+    };
+
+    dialogPosition();
+
+    $(window).resize(dialogPosition);
+
+    dialog.children("." + classPrefix + "dialog-close").bind("click", function() {
+        dialog.hide().lockScreen(false).hideMask();
+
+        if (!options.cached) {
+            dialog.remove();
+        }
+    });
+
+    if (typeof options.buttons === "object")
+    {
+        var footer = dialog.footer = dialog.find("." + classPrefix + "dialog-footer");
+
+        for (var key in options.buttons)
+        {
+            var btn = options.buttons[key];
+            var btnClassName = classPrefix + key + "-btn";
+
+            footer.append("<button class=\"" + classPrefix + "btn " + btnClassName + "\">" + btn[0] + "</button>");
+            btn[1] = $.proxy(btn[1], dialog);
+            footer.children("." + btnClassName).bind("click", btn[1]);
+        }
+    }
+
+    if (options.title !== "" && options.drag)
+    {                        
+        var posX, posY;
+        var dialogHeader = dialog.children("." + classPrefix + "dialog-header");
+
+        if (!options.mask) {
+            dialogHeader.bind("click", function(){
+                editormd.dialogZindex += 2;
+                dialog.css("z-index", editormd.dialogZindex);
+            });
+        }
+
+        var userCanSelect = function (obj) {
+            obj.removeClass(classPrefix + "user-unselect").off("selectstart");
+        };
+
+        var userUnselect = function (obj) {
+            obj.addClass(classPrefix + "user-unselect").on("selectstart", function() { // selectstart for IE                        
+                return false;
+            });
+        };
+
+        var moveAction = function (e) {
+            e = e || window.event;  //IE
+
+            var left, top, nowLeft = parseInt(dialog[0].style.left), nowTop = parseInt(dialog[0].style.top);
+
+            if( nowLeft >= 0 ) {
+                if( nowLeft + dialog.width() <= $(window).width()) {
+                    left = e.clientX - posX;
+                } else {	
+                    left = $(window).width() - dialog.width();
+                    document.onmousemove = null;
+                }
+            } else {
+                left = 0;
+                document.onmousemove = null;
+            }
+
+            if( nowTop >= 0 ) {
+                top = e.clientY - posY;
+            } else {
+                top = 0;
+                document.onmousemove = null;
+            }
+
+
+            document.onselectstart = function() {
+                return false;
+            };
+
+            userUnselect($("body"));
+            userUnselect(dialog);
+            dialog[0].style.left = left + "px";
+            dialog[0].style.top  = top + "px";
+        };
+
+        dialogHeader.mousedown(function(e) {
+            e = e || window.event;  //IE
+            posX = e.clientX - parseInt(dialog[0].style.left);
+            posY = e.clientY - parseInt(dialog[0].style.top);
+
+            document.onmousemove = moveAction;                   
+        });
+
+        document.onmouseup = function() {                            
+            userCanSelect($("body"));
+            userCanSelect(dialog);
+
+            document.onselectstart = null;         
+            document.onmousemove = null;
+        };
+
+        dialogHeader.touchDraggable = function() {
+            var offset = null;
+            var start  = function(e) {
+                var orig = e.originalEvent; 
+                var pos  = $(this).parent().position();
+
+                offset = {
+                    x : orig.changedTouches[0].pageX - pos.left,
+                    y : orig.changedTouches[0].pageY - pos.top
+                };
+            };
+
+            var move = function(e) {
+                e.preventDefault();
+                var orig = e.originalEvent;
+
+                $(this).parent().css({
+                    top  : orig.changedTouches[0].pageY - offset.y,
+                    left : orig.changedTouches[0].pageX - offset.x
+                });
+            };
+
+            this.bind("touchstart", start).bind("touchmove", move);
+        };
+
+        dialogHeader.touchDraggable();
+    }
+
+    editormd.dialogZindex += 2;
+
+    return dialog;
+}
+ /**
+ * 简单地过滤指定的HTML标签
+ * Filter custom html tags
+ * 
+ * @param   {String}   html          要过滤HTML
+ * @param   {String}   filters       要过滤的标签
+ * @returns {String}   html          返回过滤的HTML
+ */
+
+function editorFilterHTMLTags(html, filters) {
+    if (typeof html !== "string") {
+        html = html.toString();
+    }
+        
+    if (typeof filters !== "string") {
+        return html;
+    }
+
+    var expression = filters.split("|");
+    var filterTags = expression[0].split(",");
+    var attrs      = expression[1];
+
+    for (var i = 0, len = filterTags.length; i < len; i++)
+    {
+        var tag = filterTags[i];
+
+        html = html.replace(new RegExp("\<\s*" + tag + "\s*([^\>]*)\>([^\>]*)\<\s*\/" + tag + "\s*\>", "igm"), "");
+    }
+    
+    //return html;
+
+    if (typeof attrs !== "undefined")
+    {
+        var htmlTagRegex = /\<(\w+)\s*([^\>]*)\>([^\>]*)\<\/(\w+)\>/ig;
+
+        if (attrs === "*")
+        {
+            html = html.replace(htmlTagRegex, function($1, $2, $3, $4, $5) {
+                return "<" + $2 + ">" + $4 + "</" + $5 + ">";
+            });         
+        }
+        else if (attrs === "on*")
+        {
+            html = html.replace(htmlTagRegex, function($1, $2, $3, $4, $5) {
+                var el = $("<" + $2 + ">" + $4 + "</" + $5 + ">");
+                var _attrs = $($1)[0].attributes;
+                var $attrs = {};
+                
+                $.each(_attrs, function(i, e) {
+                    if (e.nodeName !== "\"") {
+                        $attrs[e.nodeName] = e.nodeValue;
+
+                        // Fixed like <a href="javascript:alert('xss')"></a> XSS problem, Copy from pull request #532
+                        if (e.nodeName === "href" && e.nodeValue.toLowerCase().indexOf("javascript:") >= 0) {
+                            $attrs[e.nodeName] = "javascript:;";
+                        }
+                    }
+                });
+                
+                $.each($attrs, function(i) {                        
+                    if (i.indexOf("on") === 0) {
+                        delete $attrs[i];
+                    }
+                });
+                
+                el.attr($attrs);
+                
+                var text = (typeof el[1] !== "undefined") ? $(el[1]).text() : "";
+
+                return el[0].outerHTML + text;
+            });
+        }
+        else
+        {
+            html = html.replace(htmlTagRegex, function($1, $2, $3, $4) {
+                var filterAttrs = attrs.split(",");
+                var el = $($1);
+                el.html($4);
+
+                $.each(filterAttrs, function(i) {
+                    el.attr(filterAttrs[i], null);
+                });
+
+                return el[0].outerHTML;
+            });
+        }
+    }
+    
+    return html;
+}
+"use strict";
+
+/**
+ * 将Markdown文档解析为HTML用于前台显示
+ * Parse Markdown to HTML for Font-end preview.
+ * 
+ * @param   {String}   id            用于显示HTML的对象ID
+ * @param   {Object}   [options={}]  配置选项，可选
+ * @returns {Object}   div           返回jQuery对象元素
+ */
+
+function editorMarkdownToHTML(id, options) {
+    var defaults = {
+        gfm                  : true,
+        toc                  : true,
+        tocm                 : false,
+        tocStartLevel        : 1,
+        tocTitle             : "目录",
+        tocDropdown          : false,
+        tocContainer         : "",
+        markdown             : "",
+        markdownSourceCode   : false,
+        htmlDecode           : false,
+        autoLoadKaTeX        : true,
+        pageBreak            : true,
+        atLink               : true,    // for @link
+        emailLink            : true,    // for mail address auto link
+        tex                  : false,
+        taskList             : false,   // Github Flavored Markdown task lists
+        emoji                : false,
+        flowChart            : false,
+        sequenceDiagram      : false,
+        previewCodeHighlight : true
+    };
+    
+    editormd.$marked  = marked;
+
+    var div           = $("#" + id);
+    var settings      = div.settings = $.extend(true, {}, defaults, options || {});
+    var saveTo        = div.find("textarea");
+
+    if (saveTo.length < 1)
+    {
+        div.append("<textarea></textarea>");
+        saveTo        = div.find("textarea");
+    }        
+    
+    var markdownDoc   = (settings.markdown === "") ? saveTo.val() : settings.markdown; 
+    var markdownToC   = [];
+
+    var rendererOptions = {  
+        toc                  : settings.toc,
+        tocm                 : settings.tocm,
+        tocStartLevel        : settings.tocStartLevel,
+        taskList             : settings.taskList,
+        emoji                : settings.emoji,
+        tex                  : settings.tex,
+        pageBreak            : settings.pageBreak,
+        atLink               : settings.atLink,           // for @link
+        emailLink            : settings.emailLink,        // for mail address auto link
+        flowChart            : settings.flowChart,
+        sequenceDiagram      : settings.sequenceDiagram,
+        previewCodeHighlight : settings.previewCodeHighlight,
+    };
+
+    var markedOptions = {
+        renderer    : editormd.markedRenderer(markdownToC, rendererOptions),
+        gfm         : settings.gfm,
+        tables      : true,
+        breaks      : true,
+        pedantic    : false,
+        sanitize    : (settings.htmlDecode) ? false : true, // 是否忽略HTML标签，即是否开启HTML标签解析，为了安全性，默认不开启
+        smartLists  : true,
+        smartypants : true
+    };
+
+    markdownDoc = markdownDoc.toString();
+
+    var markdownParsed = marked(markdownDoc, markedOptions);
+
+    markdownParsed = editormd.filterHTMLTags(markdownParsed, settings.htmlDecode);
+
+    if (settings.markdownSourceCode) {
+        saveTo.text(markdownDoc);
+    } else {
+        saveTo.remove();
+    }
+    
+    div.addClass("markdown-body " + this.classPrefix + "html-preview").append(markdownParsed);
+
+    div.find(".task-list-item").each(function () {
+        $(this).parent().addClass("task-list");
+    });
+    
+    var tocContainer = (settings.tocContainer !== "") ? $(settings.tocContainer) : div;
+    
+    if (settings.tocContainer !== "")
+    {
+        tocContainer.attr("previewContainer", false);
+    }
+     
+    if (settings.toc) 
+    {
+        div.tocContainer = this.markdownToCRenderer(markdownToC, tocContainer, settings.tocDropdown, settings.tocStartLevel);
+        
+        if (settings.tocDropdown || div.find("." + this.classPrefix + "toc-menu").length > 0)
+        {
+            this.tocDropdownMenu(div, settings.tocTitle);
+        }
+        
+        if (settings.tocContainer !== "")
+        {
+            div.find(".editormd-toc-menu, .editormd-markdown-toc").remove();
+        }
+    }
+        
+    if (settings.previewCodeHighlight) 
+    {
+        div.find("pre").addClass("prettyprint linenums");
+        window.prettyPrint();
+    }
+    
+    if (!editormd.isIE8) 
+    {
+        if (settings.flowChart) {
+            div.find(".flowchart").flowChart(); 
+        }
+
+        if (settings.sequenceDiagram) {
+            var $sequenceDiagram = div.find(".sequence-diagram");
+
+            if ($sequenceDiagram.length > 0) {
+                $sequenceDiagram.sequenceDiagram({theme: "simple"});
+            }
+        }
+    }
+
+    if (settings.tex)
+    {
+        var katexHandle = function() {
+            div.find("." + editormd.classNames.tex).each(function(){
+                var tex  = $(this);                    
+                katex.render(tex.html().replace(/&lt;/g, "<").replace(/&gt;/g, ">"), tex[0]);                    
+                tex.find(".katex").css("font-size", "1.6em");
+            });
+        };
+        
+        if (settings.autoLoadKaTeX && !editormd.$katex && !editormd.kaTeXLoaded)
+        {
+            this.loadKaTeX(function() {
+                editormd.$katex      = katex;
+                editormd.kaTeXLoaded = true;
+                katexHandle();
+            });
+        }
+        else
+        {
+            katexHandle();
+        }
+    }
+    
+    div.getMarkdown = function() {            
+        return saveTo.val();
+    };
+    
+    return div;
+}
+/**
+ * Custom Marked renderer rules
+ * 
+ * @param   {Array}    markdownToC     Pass in an array for receiving TOC
+ * @returns {Renderer} markedRenderer  Return the marked Renderer custom object
+ */
+
+function markedRenderer(markdownToC, options) { 
+    var defaults = {
+        toc                  : true,           // Table of contents
+        tocm                 : false,
+        tocStartLevel        : 1,              // Said from H1 to create ToC  
+        pageBreak            : true,
+        atLink               : true,           // for @link
+        emailLink            : true,           // for mail address auto link
+        taskList             : false,          // Enable Github Flavored Markdown task lists
+        emoji                : false,          // :emoji: , Support Twemoji, fontAwesome, Editor.md logo emojis.
+        tex                  : false,          // TeX(LaTeX), based on KaTeX
+        flowChart            : false,          // flowChart.js only support IE9+
+        sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
+    };
+
+    
+    var settings        = $.extend(defaults, options || {});    
+    var marked          = editormd.$marked;
+    var markedRenderer  = new marked.Renderer();
+    markdownToC         = markdownToC || [];        
+        
+    var regexs          = editormd.regexs;
+    var atLinkReg       = regexs.atLink;
+    var emailReg        = regexs.email;
+    var emailLinkReg    = regexs.emailLink;
+    var pageBreakReg    = regexs.pageBreak;
+
+    const emojiRenderer = new EditorEmojiRenderer({
+        faIconReg: regexs.fontAwesome,
+        emojiReg: regexs.emoji,
+        editormdLogoReg: regexs.editormdLogo,
+        twemojiReg      :regexs.twemoji
+    });
+
+    markedRenderer.emoji = (text) => {
+        if (!settings.emoji) {
+            return text;
+        }
+        return emojiRenderer.execute(text);
+    };
+
+    const atLinkRenderer = new AtLinkRenderer({ 
+        atLinkReg: regexs.atLink, 
+        emailReg: regexs.emailReg,
+        emailLinkReg: regexs.emailLinkReg,
+        atLink: settings.atLink,
+        emailLink : settings.emailLink 
+    });
+    markedRenderer.atLink = function (text) { 
+        return atLinkRenderer.execute( text);
+    }
+    
+    const linkRenderer = new LinkRenderer({ atLinkReg: regexs.atLink, sanitize: this.sanitize });
+    markedRenderer.link = function (href, title, text) { 
+        return linkRenderer.execute(href, title, text);
+    }
+    
+    const headingRenderder = new HeadingRenderder({ markdownToC : markdownToC || [], headerPrefix : markedRenderer.options.headerPrefix });
+    
+    markedRenderer.heading = function (text, level) {
+        var hasLinkReg     = /\s*\<a\s*href\=\"(.*)\"\s*([^\>]*)\>(.*)\<\/a\>\s*/;
+        let header = headingRenderder.execute(text, level);
+        if (hasLinkReg) {
+            header.append(this.atLink(this.emoji(text)));
+            
+        } else { 
+            header.append(this.atLink(this.emoji(text)));
+        }
+        return header.prop('outerHTML');
+    };
+
+    markedRenderer.pageBreak = function(text) {
+        if (pageBreakReg.test(text) && settings.pageBreak)
+        {
+            text = "<hr style=\"page-break-after:always;\" class=\"page-break editormd-page-break\" />";
+        }
+        return text;
+    };
+
+    markedRenderer.paragraph = function(text) {
+        var isTeXInline     = /\$\$(.*)\$\$/g.test(text);
+        var isTeXLine       = /^\$\$(.*)\$\$$/.test(text);
+        var isTeXAddClass   = (isTeXLine)     ? " class=\"" + editormd.classNames.tex + "\"" : "";
+        var isToC           = (settings.tocm) ? /^(\[TOC\]|\[TOCM\])$/.test(text) : /^\[TOC\]$/.test(text);
+        var isToCMenu = /^\[TOCM\]$/.test(text);
+        const isCodeTree = /^\[CodeTree\]$/.test(text);
+        
+        if (!isTeXLine && isTeXInline) 
+        {
+            text = text.replace(/(\$\$([^\$]*)\$\$)+/g, function($1, $2) {
+                return "<span class=\"" + editormd.classNames.tex + "\">" + $2.replace(/\$/g, "") + "</span>";
+            });
+        } 
+        else 
+        {
+            text = (isTeXLine) ? text.replace(/\$/g, "") : text;
+        }
+        
+        var tocHTML = "<div class=\"markdown-toc editormd-markdown-toc\">" + text + "</div>";
+        
+        if (isCodeTree) {
+            var treeViewHTML = "<div class=\"editormd-code-treeview\">" + text + "</div>";
+            return treeViewHTML;
+        }
+        return (isToC) ? ( (isToCMenu) ? "<div class=\"editormd-toc-menu\">" + tocHTML + "</div><br/>" : tocHTML )
+                       : ( (pageBreakReg.test(text)) ? this.pageBreak(text) : "<p" + isTeXAddClass + ">" + this.atLink(this.emoji(text)) + "</p>\n" );
+    };
+
+    const fileExtention = {
+        '.js':'javascript'
+    };
+
+    markedRenderer.code = function (code, lang, file) {
+        if (typeof marked.Renderer.prototype[lang] === 'undefined' && typeof lang !== 'undefined') {
+            let ext = lang.substring(lang.lastIndexOf("."), lang.length);
+
+            if (fileExtention.hasOwnProperty(ext)) {
+                editormd.addCodeTree(lang);
+
+                return this.code(code,fileExtention[ext], lang)
+            }
+        }
+        
+        if (lang === "seq" || lang === "sequence")
+        {
+            return "<div class=\"sequence-diagram\">" + code + "</div>";
+        } 
+        else if ( lang === "flow")
+        {
+            return "<div class=\"flowchart\">" + code + "</div>";
+        } 
+        else if ( lang === "math" || lang === "latex" || lang === "katex")
+        {
+            return "<p class=\"" + editormd.classNames.tex + "\">" + code + "</p>";
+        } 
+        else 
+        {
+            let codePre = marked.Renderer.prototype.code.apply(this, arguments);
+            if (typeof file !== 'undefined') {
+                return `<p class="code-file-path" >${file}</p>` + codePre;
+            }
+            return codePre;
+        }
+    };
+
+    markedRenderer.tablecell = function(content, flags) {
+        var type = (flags.header) ? "th" : "td";
+        var tag  = (flags.align)  ? "<" + type +" style=\"text-align:" + flags.align + "\">" : "<" + type + ">";
+        
+        return tag + this.atLink(this.emoji(content)) + "</" + type + ">\n";
+    };
+
+    markedRenderer.listitem = function(text, task) {
+        if (settings.taskList && task) {
+            text = text.replace("<input ", "<input class='task-list-item-checkbox' ");
+
+            return "<li class=\"task-list-item\">" + this.atLink(this.emoji(text)) + "</li>";
+        } else {
+            return "<li>" + this.atLink(this.emoji(text)) + "</li>";
+        }
+    };
+    
+    return markedRenderer;
+}
 const regexConst = {
     atLink        : /@(\w+)/g,
     email         : /(\w+)@(\w+)\.(\w+)\.?(\w+)?/g,
@@ -8,115 +690,6 @@ const regexConst = {
     fontAwesome   : /:(fa-([\w]+)(-(\w+)){0,}):/g,
     editormdLogo  : /:(editormd-logo-?(\w+)?):/g,
     pageBreak     : /^\[[=]{8,}\]$/
-};
-var editorCodeMirror = {
-    /**
-         * setEditorTheme() 的别名
-         * setEditorTheme() alias
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        setCodeMirrorTheme : function (theme) {            
-            this.setEditorTheme(theme);
-            
-            return this;
-        },
-        
-        /**
-         * 配置和初始化CodeMirror组件
-         * CodeMirror initialization
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        setCodeMirror : function() { 
-            var settings         = this.settings;
-            var editor           = this.editor;
-            
-            if (settings.editorTheme !== "default")
-            {
-                editormd.loadCSS(settings.path + "codemirror/theme/" + settings.editorTheme);
-            }
-            
-            var codeMirrorConfig = {
-                mode                      : settings.mode,
-                theme                     : settings.editorTheme,
-                tabSize                   : settings.tabSize,
-                dragDrop                  : false,
-                autofocus                 : settings.autoFocus,
-                autoCloseTags             : settings.autoCloseTags,
-                readOnly                  : (settings.readOnly) ? "nocursor" : false,
-                indentUnit                : settings.indentUnit,
-                lineNumbers               : settings.lineNumbers,
-                lineWrapping              : settings.lineWrapping,
-                extraKeys                 : {
-                                                "Ctrl-Q": function(cm) { 
-                                                    cm.foldCode(cm.getCursor()); 
-                                                }
-                                            },
-                foldGutter                : settings.codeFold,
-                gutters                   : ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-                matchBrackets             : settings.matchBrackets,
-                indentWithTabs            : settings.indentWithTabs,
-                styleActiveLine           : settings.styleActiveLine,
-                styleSelectedText         : settings.styleSelectedText,
-                autoCloseBrackets         : settings.autoCloseBrackets,
-                showTrailingSpace         : settings.showTrailingSpace,
-                highlightSelectionMatches : ( (!settings.matchWordHighlight) ? false : { showToken: (settings.matchWordHighlight === "onselected") ? false : /\w/ } )
-            };
-            
-            this.codeEditor = this.cm        = editormd.$CodeMirror.fromTextArea(this.markdownTextarea[0], codeMirrorConfig);
-            this.codeMirror = this.cmElement = editor.children(".CodeMirror");
-            
-            if (settings.value !== "")
-            {
-                this.cm.setValue(settings.value);
-            }
-
-            this.codeMirror.css({
-                fontSize : settings.fontSize,
-                width    : (!settings.watch) ? "100%" : "50%"
-            });
-            
-            if (settings.autoHeight)
-            {
-                this.codeMirror.css("height", "auto");
-                this.cm.setOption("viewportMargin", Infinity);
-            }
-            
-            if (!settings.lineNumbers)
-            {
-                this.codeMirror.find(".CodeMirror-gutters").css("border-right", "none");
-            }
-
-            return this;
-        },
-        
-        /**
-         * 获取CodeMirror的配置选项
-         * Get CodeMirror setting options
-         * 
-         * @returns {Mixed}                  return CodeMirror setting option value
-         */
-        
-        getCodeMirrorOption : function(key) {            
-            return this.cm.getOption(key);
-        },
-        
-        /**
-         * 配置和重配置CodeMirror的选项
-         * CodeMirror setting options / resettings
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        setCodeMirrorOption : function(key, value) {
-            
-            this.cm.setOption(key, value);
-            
-            return this;
-        },
 };
 const editorContent = {
     /**
@@ -261,6 +834,43 @@ const editorContent = {
         }
         
         return this.previewContainer.html();
+    },
+};
+const editorCursor = {
+    /**
+     * 聚焦光标位置
+     * Focusing the cursor position
+     * 
+     * @returns {editormd}         返回editormd的实例对象
+     */
+    
+    focus : function() {
+        this.cm.focus();
+        return this;
+    },
+    
+    /**
+     * 设置光标的位置
+     * Set cursor position
+     * 
+     * @param   {Object}    cursor 要设置的光标位置键值对象，例：{line:1, ch:0}
+     * @returns {editormd}         返回editormd的实例对象
+     */
+    
+    setCursor : function(cursor) {
+        this.cm.setCursor(cursor);
+        return this;
+    },
+    
+    /**
+     * 获取当前光标的位置
+     * Get the current position of the cursor
+     * 
+     * @returns {Cursor}         返回一个光标Cursor对象
+     */
+    
+    getCursor : function() {
+        return this.cm.getCursor();
     },
 };
 var editorDialog = {
@@ -453,6 +1063,134 @@ var editorDialog = {
      
     
 };
+const editorDimension = {
+    /**
+     * 设置编辑器的宽度
+     * Set editor width
+     * 
+     * @param   {Number|String} width  编辑器宽度值
+     * @returns {editormd}             返回editormd的实例对象
+     */
+    
+    width : function(width) {
+            
+        this.editor.css("width", (typeof width === "number") ? width  + "px" : width);            
+        this.resize();
+        
+        return this;
+    },
+    
+    /**
+     * 设置编辑器的高度
+     * Set editor height
+     * 
+     * @param   {Number|String} height  编辑器高度值
+     * @returns {editormd}              返回editormd的实例对象
+     */
+    
+    height : function(height) {
+            
+        this.editor.css("height", (typeof height === "number")  ? height  + "px" : height);            
+        this.resize();
+        
+        return this;
+    },
+    
+    /**
+     * 调整编辑器的尺寸和布局
+     * Resize editor layout
+     * 
+     * @param   {Number|String} [width=null]  编辑器宽度值
+     * @param   {Number|String} [height=null] 编辑器高度值
+     * @returns {editormd}                    返回editormd的实例对象
+     */
+    
+    resize : function(width, height) {
+        
+        width  = width  || null;
+        height = height || null;
+        
+        var state      = this.state;
+        var editor     = this.editor;
+        var preview    = this.preview;
+        var toolbar    = this.toolbar;
+        var settings   = this.settings;
+        var codeMirror = this.codeMirror;
+        
+        if (width)
+        {
+            editor.css("width", (typeof width  === "number") ? width  + "px" : width);
+        }
+        
+        if (settings.autoHeight && !state.fullscreen && !state.preview)
+        {
+            editor.css("height", "auto");
+            codeMirror.css("height", "auto");
+        } 
+        else 
+        {
+            if (height) 
+            {
+                editor.css("height", (typeof height === "number") ? height + "px" : height);
+            }
+            
+            if (state.fullscreen)
+            {
+                editor.height($(window).height());
+            }
+
+            if (settings.toolbar && !settings.readOnly) 
+            {
+                codeMirror.css("margin-top", toolbar.height() + 1).height(editor.height() - toolbar.height());
+            } 
+            else
+            {
+                codeMirror.css("margin-top", 0).height(editor.height());
+            }
+        }
+        
+        if(settings.watch) 
+        {
+            codeMirror.width(editor.width() / 2);
+            preview.width((!state.preview) ? editor.width() / 2 : editor.width());
+            
+            this.previewContainer.css("padding", settings.autoHeight ? "20px 20px 50px 40px" : "20px");
+            
+            if (settings.toolbar && !settings.readOnly) 
+            {
+                preview.css("top", toolbar.height() + 1);
+            } 
+            else 
+            {
+                preview.css("top", 0);
+            }
+            
+            if (settings.autoHeight && !state.fullscreen && !state.preview)
+            {
+                preview.height("");
+            }
+            else
+            {                
+                var previewHeight = (settings.toolbar && !settings.readOnly) ? editor.height() - toolbar.height() : editor.height();
+                
+                preview.height(previewHeight);
+            }
+        } 
+        else 
+        {
+            codeMirror.width(editor.width());
+            preview.hide();
+        }
+        
+        if (state.loaded) 
+        {
+            $.proxy(settings.onresize, this)();
+        }
+
+        return this;
+    }
+};
+
 var editorDate = {
     /**
      * 日期时间的格式化方法
@@ -1049,6 +1787,54 @@ const editorEvents = {
         return this;
     },
 };
+const editorExtendObject = {
+    /**
+     * 扩展当前实例对象，可同时设置多个或者只设置一个
+     * Extend editormd instance object, can mutil setting.
+     * 
+     * @returns {editormd}                  this(editormd instance object.)
+     */
+    
+    extend : function() {
+        if (typeof arguments[1] !== "undefined")
+        {
+            if (typeof arguments[1] === "function")
+            {
+                arguments[1] = $.proxy(arguments[1], this);
+            }
+
+            this[arguments[0]] = arguments[1];
+        }
+        
+        if (typeof arguments[0] === "object" && typeof arguments[0].length === "undefined")
+        {
+            $.extend(true, this, arguments[0]);
+        }
+
+        return this;
+    },
+    
+    /**
+     * 设置或扩展当前实例对象，单个设置
+     * Extend editormd instance object, one by one
+     * 
+     * @param   {String|Object}   key       option key
+     * @param   {String|Object}   value     option value
+     * @returns {editormd}                  this(editormd instance object.)
+     */
+    
+    set : function (key, value) {
+        
+        if (typeof value !== "undefined" && typeof value === "function")
+        {
+            value = $.proxy(value, this);
+        }
+        
+        this[key] = value;
+
+        return this;
+    },
+};
 const editorFlowChart = {
     /**
      * 解析和渲染流程图及时序图
@@ -1424,6 +2210,12 @@ var mdUtil = {
         return Object.assign({}, obj, superObj);
     },
     
+    appendMethod: function(ojb){
+        Object.keys(ojb).forEach((f) => {
+            this[f] = ojb[f];
+        });
+    },
+
     appendPrototype: function(obj, superObj){
         let source = superObj.prototype;
         let old = obj.prototype;
@@ -1431,7 +2223,67 @@ var mdUtil = {
         obj.prototype = {...obj.prototype, ...superObj.prototype};
     },
 
+    /**
+     * Get a random integer in the specified interval
+     *
+     * @return {Int} int Returns a randomly generated integer
+     */
+    rand : function (n, m) {
+        var c = m - n + 1;
+    
+        return Math.floor(Math.random() * c + n);
+    }
+};
 
+
+
+
+const editorPlugin = {
+     /**
+     * 加载并执行插件
+     * Load and execute the plugin
+     * 
+     * @param   {String}     name    plugin name / function name
+     * @param   {String}     path    plugin load path
+     * @returns {editormd}           返回editormd的实例对象
+     */
+    
+    executePlugin : function(name, path) {
+        
+        var _this    = this;
+        var cm       = this.cm;
+        var settings = this.settings;
+        
+        path = settings.pluginPath + path;
+        
+        if (typeof define === "function") 
+        {            
+            if (typeof this[name] === "undefined")
+            {
+                alert("Error: " + name + " plugin is not found, you are not load this plugin.");
+                
+                return this;
+            }
+            
+            this[name](cm);
+            
+            return this;
+        }
+        
+        if ($.inArray(path, editormd.loadFiles.plugin) < 0)
+        {
+            editormd.loadPlugin(path, function() {
+                editormd.loadPlugins[name] = _this[name];
+                _this[name](cm);
+            });
+        }
+        else
+        {
+            $.proxy(editormd.loadPlugins[name], this)(cm);
+        }
+        
+        return this;
+    },
 };
 var editorPreview = {
     /**
@@ -1804,6 +2656,151 @@ var editorString = {
      */
     trim : function(str) {
         return (!String.prototype.trim) ? str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "") : str.trim();
+    }
+};
+const editorTableOfContent = {
+/**
+     *
+     * 生成TOC(Table of Contents)
+     * Creating ToC (Table of Contents)
+     * 
+     * @param   {Array}    toc             从marked获取的TOC数组列表
+     * @param   {Element}  container       插入TOC的容器元素
+     * @param   {Integer}  startLevel      Hx 起始层级
+     * @param   {object}   markedRenderer  Marked Renderer
+     * @returns {Object}   tocContainer    返回ToC列表容器层的jQuery对象元素
+     */
+    
+    markdownToCRenderer : function(toc, container, tocDropdown, startLevel, markedRenderer) {
+        markedRenderer = markedRenderer || null;
+
+        var html        = "";    
+        var lastLevel   = 0;
+        var classPrefix = this.classPrefix;
+        
+        startLevel      = startLevel  || 1;
+        
+        for (var i = 0, len = toc.length; i < len; i++) 
+        {
+            var text  = toc[i].text;
+            var level = toc[i].level;
+            
+            if (level < startLevel) {
+                continue;
+            }
+            
+            if (level > lastLevel) 
+            {
+                html += "";
+            }
+            else if (level < lastLevel) 
+            {
+                html += (new Array(lastLevel - level + 2)).join("</ul></li>");
+            } 
+            else 
+            {
+                html += "</ul></li>";
+            }
+
+            // fixed https://github.com/pandao/editor.md/issues/476
+            // fixed https://github.com/pandao/editor.md/issues/649
+            var href = text.replace(/(<([^>]+)>)/ig, ""); // /<[^>]*>/g
+
+            if (markedRenderer) {
+                text = markedRenderer.emoji(text); // Fixed Heading can't has emoji code
+            }
+
+            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + href + "\" level=\"" + level + "\">" + text + "</a><ul>";
+            lastLevel = level;
+        }
+        
+        var tocContainer = container.find(".markdown-toc");
+        
+        if ((tocContainer.length < 1 && container.attr("previewContainer") === "false"))
+        {
+            var tocHTML = "<div class=\"markdown-toc " + classPrefix + "markdown-toc\"></div>";
+            
+            tocHTML = (tocDropdown) ? "<div class=\"" + classPrefix + "toc-menu\">" + tocHTML + "</div>" : tocHTML;
+            
+            container.html(tocHTML);
+            
+            tocContainer = container.find(".markdown-toc");
+        }
+        
+        if (tocDropdown)
+        {
+            tocContainer.wrap("<div class=\"" + classPrefix + "toc-menu\"></div><br/>");
+        }
+        
+        tocContainer.html("<ul class=\"markdown-toc-list\"></ul>").children(".markdown-toc-list").html(html.replace(/\r?\n?\<ul\>\<\/ul\>/g, ""));
+        
+        return tocContainer;
+    },
+    
+    /**
+     *
+     * 生成TOC下拉菜单
+     * Creating ToC dropdown menu
+     * 
+     * @param   {Object}   container       插入TOC的容器jQuery对象元素
+     * @param   {String}   tocTitle        ToC title
+     * @returns {Object}                   return toc-menu object
+     */
+    
+    tocDropdownMenu : function(container, tocTitle) {
+        
+        tocTitle      = tocTitle || "Table of Contents";
+        
+        var zindex    = 400;
+        var tocMenus  = container.find("." + this.classPrefix + "toc-menu");
+
+        tocMenus.each(function() {
+            var $this  = $(this);
+            var toc    = $this.children(".markdown-toc");
+            var icon   = "<i class=\"fa fa-angle-down\"></i>";
+            var btn    = "<a href=\"javascript:;\" class=\"toc-menu-btn\">" + icon + tocTitle + "</a>";
+            var menu   = toc.children("ul");            
+            var list   = menu.find("li");
+            
+            toc.append(btn);
+            
+            list.first().before("<li><h1>" + tocTitle + " " + icon + "</h1></li>");
+            
+            $this.mouseover(function(){
+                menu.show();
+
+                list.each(function(){
+                    var li = $(this);
+                    var ul = li.children("ul");
+
+                    if (ul.html() === "")
+                    {
+                        ul.remove();
+                    }
+
+                    if (ul.length > 0 && ul.html() !== "")
+                    {
+                        var firstA = li.children("a").first();
+
+                        if (firstA.children(".fa").length < 1)
+                        {
+                            firstA.append( $(icon).css({ float:"right", paddingTop:"4px" }) );
+                        }
+                    }
+
+                    li.mouseover(function(){
+                        ul.css("z-index", zindex).show();
+                        zindex += 1;
+                    }).mouseleave(function(){
+                        ul.hide();
+                    });
+                });
+            }).mouseleave(function(){
+                menu.hide();
+            }); 
+        });       
+        
+        return tocMenus;
     }
 };
 
@@ -2622,6 +3619,609 @@ var editorWatching = {
         return this;
     },
 }
+var editorCodeMirror = {
+    /**
+         * setEditorTheme() 的别名
+         * setEditorTheme() alias
+         * 
+         * @returns {editormd}  返回editormd的实例对象
+         */
+        
+        setCodeMirrorTheme : function (theme) {            
+            this.setEditorTheme(theme);
+            
+            return this;
+        },
+        
+        /**
+         * 配置和初始化CodeMirror组件
+         * CodeMirror initialization
+         * 
+         * @returns {editormd}  返回editormd的实例对象
+         */
+        
+        setCodeMirror : function() { 
+            var settings         = this.settings;
+            var editor           = this.editor;
+            
+            if (settings.editorTheme !== "default")
+            {
+                editormd.loadCSS(settings.path + "codemirror/theme/" + settings.editorTheme);
+            }
+            
+            var codeMirrorConfig = {
+                mode                      : settings.mode,
+                theme                     : settings.editorTheme,
+                tabSize                   : settings.tabSize,
+                dragDrop                  : false,
+                autofocus                 : settings.autoFocus,
+                autoCloseTags             : settings.autoCloseTags,
+                readOnly                  : (settings.readOnly) ? "nocursor" : false,
+                indentUnit                : settings.indentUnit,
+                lineNumbers               : settings.lineNumbers,
+                lineWrapping              : settings.lineWrapping,
+                extraKeys                 : {
+                                                "Ctrl-Q": function(cm) { 
+                                                    cm.foldCode(cm.getCursor()); 
+                                                }
+                                            },
+                foldGutter                : settings.codeFold,
+                gutters                   : ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                matchBrackets             : settings.matchBrackets,
+                indentWithTabs            : settings.indentWithTabs,
+                styleActiveLine           : settings.styleActiveLine,
+                styleSelectedText         : settings.styleSelectedText,
+                autoCloseBrackets         : settings.autoCloseBrackets,
+                showTrailingSpace         : settings.showTrailingSpace,
+                highlightSelectionMatches : ( (!settings.matchWordHighlight) ? false : { showToken: (settings.matchWordHighlight === "onselected") ? false : /\w/ } )
+            };
+            
+            this.codeEditor = this.cm        = editormd.$CodeMirror.fromTextArea(this.markdownTextarea[0], codeMirrorConfig);
+            this.codeMirror = this.cmElement = editor.children(".CodeMirror");
+            
+            if (settings.value !== "")
+            {
+                this.cm.setValue(settings.value);
+            }
+
+            this.codeMirror.css({
+                fontSize : settings.fontSize,
+                width    : (!settings.watch) ? "100%" : "50%"
+            });
+            
+            if (settings.autoHeight)
+            {
+                this.codeMirror.css("height", "auto");
+                this.cm.setOption("viewportMargin", Infinity);
+            }
+            
+            if (!settings.lineNumbers)
+            {
+                this.codeMirror.find(".CodeMirror-gutters").css("border-right", "none");
+            }
+
+            return this;
+        },
+        
+        /**
+         * 获取CodeMirror的配置选项
+         * Get CodeMirror setting options
+         * 
+         * @returns {Mixed}                  return CodeMirror setting option value
+         */
+        
+        getCodeMirrorOption : function(key) {            
+            return this.cm.getOption(key);
+        },
+        
+        /**
+         * 配置和重配置CodeMirror的选项
+         * CodeMirror setting options / resettings
+         * 
+         * @returns {editormd}  返回editormd的实例对象
+         */
+        
+        setCodeMirrorOption : function(key, value) {
+            
+            this.cm.setOption(key, value);
+            
+            return this;
+        },
+};
+/**
+ * 跳转到指定的行
+ * Goto CodeMirror line
+ * 
+ * @param   {String|Intiger}   line      line number or "first"|"last"
+ * @returns {editormd}                   返回editormd的实例对象
+ */
+
+function editorGotoLine(line) {
+    var settings = this.settings;
+            
+    if (!settings.gotoLine)
+    {
+        return this;
+    }
+    
+    var cm       = this.cm;
+    var count    = cm.lineCount();
+    var preview  = this.preview;
+    
+    if (typeof line === "string")
+    {
+        if(line === "last")
+        {
+            line = count;
+        }
+    
+        if (line === "first")
+        {
+            line = 1;
+        }
+    }
+    
+    if (typeof line !== "number") 
+    {  
+        alert("Error: The line number must be an integer.");
+        return this;
+    }
+    
+    line  = parseInt(line) - 1;
+    
+    if (line > count)
+    {
+        alert("Error: The line number range 1-" + count);
+        
+        return this;
+    }
+    
+    cm.setCursor( {line : line, ch : 0} );
+    
+    var scrollInfo   = cm.getScrollInfo();
+    var clientHeight = scrollInfo.clientHeight; 
+    var coords       = cm.charCoords({line : line, ch : 0}, "local");
+    
+    cm.scrollTo(null, (coords.top + coords.bottom - clientHeight) / 2);
+    
+    if (settings.watch)
+    {            
+        var cmScroll  = this.codeMirror.find(".CodeMirror-scroll")[0];
+        var height    = $(cmScroll).height(); 
+        var scrollTop = cmScroll.scrollTop;         
+        var percent   = (scrollTop / cmScroll.scrollHeight);
+
+        if (scrollTop === 0)
+        {
+            preview.scrollTop(0);
+        } 
+        else if (scrollTop + height >= cmScroll.scrollHeight - 16)
+        { 
+            preview.scrollTop(preview[0].scrollHeight);                    
+        } 
+        else
+        {                    
+            preview.scrollTop(preview[0].scrollHeight * percent);
+        }
+    }
+
+    cm.focus();
+    
+    return this;
+}
+const qKeyMap = {
+    /**
+     * 添加 CodeMirror 键盘快捷键
+     * Add CodeMirror keyboard shortcuts key map
+     * 
+     * @returns {editormd}  返回editormd的实例对象
+     */
+    
+    addKeyMap : function(map, bottom) {
+        this.cm.addKeyMap(map, bottom);
+        
+        return this;
+    },
+    
+    /**
+     * 移除 CodeMirror 键盘快捷键
+     * Remove CodeMirror keyboard shortcuts key map
+     * 
+     * @returns {editormd}  返回editormd的实例对象
+     */
+    
+    removeKeyMap : function(map) {
+        this.cm.removeKeyMap(map);
+        
+        return this;
+    },
+    
+    /**
+     * 注册键盘快捷键处理
+     * Register CodeMirror keyMaps (keyboard shortcuts).
+     * 
+     * @param   {Object}    keyMap      KeyMap key/value {"(Ctrl/Shift/Alt)-Key" : function(){}}
+     * @returns {editormd}              return this
+     */
+    
+    registerKeyMaps : function(keyMap) {
+        
+        var _this           = this;
+        var cm              = this.cm;
+        var settings        = this.settings;
+        var toolbarHandlers = editormd.toolbarHandlers;
+        var disabledKeyMaps = settings.disabledKeyMaps;
+        
+        keyMap              = keyMap || null;
+        
+        if (keyMap)
+        {
+            for (var i in keyMap)
+            {
+                if ($.inArray(i, disabledKeyMaps) < 0)
+                {
+                    var map = {};
+                    map[i]  = keyMap[i];
+
+                    cm.addKeyMap(keyMap);
+                }
+            }
+        }
+        else
+        {
+            for (var k in editormd.keyMaps)
+            {
+                var _keyMap = editormd.keyMaps[k];
+                var handle = (typeof _keyMap === "string") ? $.proxy(toolbarHandlers[_keyMap], _this) : $.proxy(_keyMap, _this);
+                
+                if ($.inArray(k, ["F9", "F10", "F11"]) < 0 && $.inArray(k, disabledKeyMaps) < 0)
+                {
+                    var _map = {};
+                    _map[k] = handle;
+
+                    cm.addKeyMap(_map);
+                }
+            }
+            
+            $(window).keydown(function(event) {
+                
+                var keymaps = {
+                    "120" : "F9",
+                    "121" : "F10",
+                    "122" : "F11"
+                };
+                
+                if ( $.inArray(keymaps[event.keyCode], disabledKeyMaps) < 0 )
+                {
+                    switch (event.keyCode)
+                    {
+                        case 120:
+                                $.proxy(toolbarHandlers["watch"], _this)();
+                                return false;
+                            break;
+                            
+                        case 121:
+                                $.proxy(toolbarHandlers["preview"], _this)();
+                                return false;
+                            break;
+                            
+                        case 122:
+                                $.proxy(toolbarHandlers["fullscreen"], _this)();                        
+                                return false;
+                            break;
+                            
+                        default:
+                            break;
+                    }
+                }
+            });
+        }
+
+        return this;
+    },
+};
+const qLoader = {
+    /**
+     * 所需组件加载队列
+     * Required components loading queue
+     * 
+     * @returns {editormd}  返回editormd的实例对象
+     */
+    
+    loadQueues : function() {
+        var _this        = this;
+        var settings     = this.settings;
+        var loadPath     = settings.path;
+                            
+        var loadFlowChartOrSequenceDiagram = function() {
+            
+            if (editormd.isIE8) 
+            {
+                _this.loadedDisplay();
+                return ;
+            }
+
+            if (settings.flowChart || settings.sequenceDiagram) 
+            {
+                editormd.loadScript(loadPath + "raphael.min", function() {
+
+                    editormd.loadScript(loadPath + "underscore.min", function() {  
+
+                        if (!settings.flowChart && settings.sequenceDiagram) 
+                        {
+                            editormd.loadScript(loadPath + "sequence-diagram.min", function() {
+                                _this.loadedDisplay();
+                            });
+                        }
+                        else if (settings.flowChart && !settings.sequenceDiagram) 
+                        {      
+                            editormd.loadScript(loadPath + "flowchart.min", function() {  
+                                editormd.loadScript(loadPath + "jquery.flowchart.min", function() {
+                                    _this.loadedDisplay();
+                                });
+                            });
+                        }
+                        else if (settings.flowChart && settings.sequenceDiagram) 
+                        {  
+                            editormd.loadScript(loadPath + "flowchart.min", function() {  
+                                editormd.loadScript(loadPath + "jquery.flowchart.min", function() {
+                                    editormd.loadScript(loadPath + "sequence-diagram.min", function() {
+                                        _this.loadedDisplay();
+                                    });
+                                });
+                            });
+                        }
+                    });
+
+                });
+            } 
+            else
+            {
+                _this.loadedDisplay();
+            }
+        }; 
+
+        editormd.loadCSS(loadPath + "codemirror/codemirror.min");
+        
+        if (settings.searchReplace && !settings.readOnly)
+        {
+            editormd.loadCSS(loadPath + "codemirror/addon/dialog/dialog");
+            editormd.loadCSS(loadPath + "codemirror/addon/search/matchesonscrollbar");
+        }
+        
+        if (settings.codeFold)
+        {
+            editormd.loadCSS(loadPath + "codemirror/addon/fold/foldgutter");            
+        }
+        
+        editormd.loadScript(loadPath + "codemirror/codemirror.min", function() {
+            editormd.$CodeMirror = CodeMirror;
+            
+            editormd.loadScript(loadPath + "codemirror/modes.min", function() {
+                
+                editormd.loadScript(loadPath + "codemirror/addons.min", function() {
+                    
+                    _this.setCodeMirror();
+                    
+                    if (settings.mode !== "gfm" && settings.mode !== "markdown") 
+                    {
+                        _this.loadedDisplay();
+                        
+                        return false;
+                    }
+                    
+                    _this.setToolbar();
+
+                    editormd.loadScript(loadPath + "marked.min", function() {
+
+                        editormd.$marked = marked;
+                            
+                        if (settings.previewCodeHighlight) 
+                        {
+                            editormd.loadScript(loadPath + "prettify.min", function() {
+                                loadFlowChartOrSequenceDiagram();
+                            });
+                        } 
+                        else
+                        {                  
+                            loadFlowChartOrSequenceDiagram();
+                        }
+                    });
+                    
+                });
+                
+            });
+            
+        });
+
+        return this;
+    },
+
+    /**
+     * 加载队列完成之后的显示处理
+     * Display handle of the module queues loaded after.
+     * 
+     * @param   {Boolean}   recreate   是否为重建编辑器
+     * @returns {editormd}             返回editormd的实例对象
+     */
+    
+    loadedDisplay : function(recreate) {
+        
+        recreate             = recreate || false;
+        
+        var _this            = this;
+        var editor           = this.editor;
+        var preview          = this.preview;
+        var settings         = this.settings;
+        
+        this.containerMask.hide();
+        
+        this.save();
+        
+        if (settings.watch) {
+            preview.show();
+        }
+        
+        editor.data("oldWidth", editor.width()).data("oldHeight", editor.height()); // 为了兼容Zepto
+        
+        this.resize();
+        this.registerKeyMaps();
+        
+        $(window).resize(function(){
+            _this.resize();
+        });
+        
+        this.bindScrollEvent().bindChangeEvent();
+        
+        if (!recreate)
+        {
+            $.proxy(settings.onload, this)();
+        }
+        
+        this.state.loaded = true;
+
+        return this;
+    },
+};
+/**
+ * Parse & Saving Markdown source code
+ * 
+ * @returns {editormd}     返回editormd的实例对象
+ */
+        
+function editorSave() {
+            
+    if (timer === null)
+    {
+        return this;
+    }
+    
+    var _this            = this;
+    var state            = this.state;
+    var settings         = this.settings;
+    var cm               = this.cm;            
+    var cmValue          = cm.getValue();
+    var previewContainer = this.previewContainer;
+
+    if (settings.mode !== "gfm" && settings.mode !== "markdown") 
+    {
+        this.markdownTextarea.val(cmValue);
+        
+        return this;
+    }
+    
+    var marked          = editormd.$marked;
+    var markdownToC     = this.markdownToC = [];            
+    var rendererOptions = this.markedRendererOptions = {  
+        toc                  : settings.toc,
+        tocm                 : settings.tocm,
+        tocStartLevel        : settings.tocStartLevel,
+        pageBreak            : settings.pageBreak,
+        taskList             : settings.taskList,
+        emoji                : settings.emoji,
+        tex                  : settings.tex,
+        atLink               : settings.atLink,           // for @link
+        emailLink            : settings.emailLink,        // for mail address auto link
+        flowChart            : settings.flowChart,
+        sequenceDiagram      : settings.sequenceDiagram,
+        previewCodeHighlight : settings.previewCodeHighlight,
+    };
+    
+    var markedOptions = this.markedOptions = {
+        renderer    : editormd.markedRenderer(markdownToC, rendererOptions),
+        gfm         : true,
+        tables      : true,
+        breaks      : true,
+        pedantic    : false,
+        sanitize    : (settings.htmlDecode) ? false : true,  // 关闭忽略HTML标签，即开启识别HTML标签，默认为false
+        smartLists  : true,
+        smartypants : true
+    };
+    
+    marked.setOptions(markedOptions);
+            
+    var newMarkdownDoc = editormd.$marked(cmValue, markedOptions);
+    
+    newMarkdownDoc = editormd.filterHTMLTags(newMarkdownDoc, settings.htmlDecode);
+    
+    this.markdownTextarea.text(cmValue);
+    
+    cm.save();
+    
+    if (settings.saveHTMLToTextarea) 
+    {
+        this.htmlTextarea.text(newMarkdownDoc);
+    }
+    
+    if(settings.watch || (!settings.watch && state.preview))
+    {
+        previewContainer.html(newMarkdownDoc);
+
+        previewContainer.find(".task-list-item").each(function () {
+            $(this).parent().addClass("task-list");
+        });
+
+        this.previewCodeHighlight();
+        
+        if (settings.toc) 
+        {
+            var tocContainer = (settings.tocContainer === "") ? previewContainer : $(settings.tocContainer);
+            var tocMenu      = tocContainer.find("." + this.classPrefix + "toc-menu");
+            
+            tocContainer.attr("previewContainer", (settings.tocContainer === "") ? "true" : "false");
+            
+            if (settings.tocContainer !== "" && tocMenu.length > 0)
+            {
+                tocMenu.remove();
+            }
+            
+            editormd.markdownToCRenderer(markdownToC, tocContainer, settings.tocDropdown, settings.tocStartLevel);
+    
+            if (settings.tocDropdown || tocContainer.find("." + this.classPrefix + "toc-menu").length > 0)
+            {
+                editormd.tocDropdownMenu(tocContainer, (settings.tocTitle !== "") ? settings.tocTitle : this.lang.tocTitle);
+            }
+    
+            if (settings.tocContainer !== "")
+            {
+                previewContainer.find(".markdown-toc").css("border", "none");
+            }
+        }
+        
+        if (settings.tex)
+        {
+            if (!editormd.kaTeXLoaded && settings.autoLoadModules) 
+            {
+                editormd.loadKaTeX(function() {
+                    editormd.$katex = katex;
+                    editormd.kaTeXLoaded = true;
+                    _this.katexRender();
+                });
+            } 
+            else 
+            {
+                editormd.$katex = katex;
+                this.katexRender();
+            }
+        }                
+        
+        if (settings.flowChart || settings.sequenceDiagram)
+        {
+            flowchartTimer = setTimeout(function(){
+                clearTimeout(flowchartTimer);
+                _this.flowChartAndSequenceDiagramRender();
+                flowchartTimer = null;
+            }, 10);
+        }
+
+        if (state.loaded) 
+        {
+            $.proxy(settings.onchange, this)();
+        }
+    }
+
+    return this;
+}
 class EditorRenderer { 
 
     constructor(options) {
@@ -2674,7 +4274,6 @@ class EditorEmojiRenderer {
     }
 
     execute(text) {
-            
         const regexDefault = this.config;
         text = text.replace(editormd.regexs.emojiDatetime, function($1) {           
             return $1.replace(/:/g, "&#58;");
@@ -2772,11 +4371,11 @@ class HeadingRenderder extends EditorRenderer {
             slug  : escapedText
         };
         
-        var isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
+        let isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
+        
         var id        = (isChinese) ? escape(text).replace(/\%/g, "") : text.toLowerCase().replace(/[^\w]+/g, "-");
-
         if (_headingIds.indexOf(id) >= 0) {
-            id += editormd.rand(100, 999999);
+            id += mdUtil.rand(100, 999999);
         }
 
         _headingIds.push(id);
@@ -2785,14 +4384,14 @@ class HeadingRenderder extends EditorRenderer {
 
         markdownToC.push(toc);
         
-        var headingHTML = "<h" + level + " id=\"h"+ level + "-" + headerPrefix + id +"\">";
-        
-        headingHTML    += "<a name=\"" + text + "\" class=\"reference-link\"></a>";
-        headingHTML    += "<span class=\"header-link octicon octicon-link\"></span>";
-        headingHTML    += (hasLinkReg) ? this.atLink(this.emoji(linkText)) : this.atLink(this.emoji(text));
-        headingHTML    += "</h" + level + ">";
-        console.log(`render header`)
-        return headingHTML;
+        let header = $(`<h${level}/>`, { id: `h${level}-${headerPrefix + id}` });
+        let referecenLink = $(`<a/>`, { name: text, class: 'reference-link' });
+        header.append(referecenLink);
+
+        let octiconLink = $(`<span/>`, { class: 'header-link octicon octicon-link' });
+        header.append(octiconLink);
+
+        return header;
     }
 }
 class LinkRenderer { 
@@ -2876,8 +4475,8 @@ class LinkRenderer {
     /**
      * editormd
      * 
-     * @param   {String} id           编辑器的ID
-     * @param   {Object} options      配置选项 Key/Value
+     * @param   {String} id           ID of the editor element
+     * @param   {Object} options      Configuration options Key/Value
      * @returns {Object} editormd     返回editormd对象
      */
     
@@ -2949,9 +4548,7 @@ class LinkRenderer {
          */
         
         init : function (id, options) {
-            
             options              = options || {};
-            
             if (typeof id === "object")
             {
                 options = id;
@@ -2971,12 +4568,10 @@ class LinkRenderer {
             this.settings        = settings;
 
             id                   = (typeof id === "object") ? settings.id : id;
-            
             var editor           = this.editor       = $("#" + id);
-            
             this.id              = id;
             this.lang            = settings.lang;
-            
+
             var classNames       = this.classNames   = {
                 textarea : {
                     html     : classPrefix + "html-textarea",
@@ -3089,149 +4684,6 @@ class LinkRenderer {
         },
         
         /**
-         * 所需组件加载队列
-         * Required components loading queue
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        loadQueues : function() {
-            var _this        = this;
-            var settings     = this.settings;
-            var loadPath     = settings.path;
-                                
-            var loadFlowChartOrSequenceDiagram = function() {
-                
-                if (editormd.isIE8) 
-                {
-                    _this.loadedDisplay();
-                    
-                    return ;
-                }
-
-                if (settings.flowChart || settings.sequenceDiagram) 
-                {
-                    editormd.loadScript(loadPath + "raphael.min", function() {
-
-                        editormd.loadScript(loadPath + "underscore.min", function() {  
-
-                            if (!settings.flowChart && settings.sequenceDiagram) 
-                            {
-                                editormd.loadScript(loadPath + "sequence-diagram.min", function() {
-                                    _this.loadedDisplay();
-                                });
-                            }
-                            else if (settings.flowChart && !settings.sequenceDiagram) 
-                            {      
-                                editormd.loadScript(loadPath + "flowchart.min", function() {  
-                                    editormd.loadScript(loadPath + "jquery.flowchart.min", function() {
-                                        _this.loadedDisplay();
-                                    });
-                                });
-                            }
-                            else if (settings.flowChart && settings.sequenceDiagram) 
-                            {  
-                                editormd.loadScript(loadPath + "flowchart.min", function() {  
-                                    editormd.loadScript(loadPath + "jquery.flowchart.min", function() {
-                                        editormd.loadScript(loadPath + "sequence-diagram.min", function() {
-                                            _this.loadedDisplay();
-                                        });
-                                    });
-                                });
-                            }
-                        });
-
-                    });
-                } 
-                else
-                {
-                    _this.loadedDisplay();
-                }
-            }; 
-
-            editormd.loadCSS(loadPath + "codemirror/codemirror.min");
-            
-            if (settings.searchReplace && !settings.readOnly)
-            {
-                editormd.loadCSS(loadPath + "codemirror/addon/dialog/dialog");
-                editormd.loadCSS(loadPath + "codemirror/addon/search/matchesonscrollbar");
-            }
-            
-            if (settings.codeFold)
-            {
-                editormd.loadCSS(loadPath + "codemirror/addon/fold/foldgutter");            
-            }
-            
-            editormd.loadScript(loadPath + "codemirror/codemirror.min", function() {
-                editormd.$CodeMirror = CodeMirror;
-                
-                editormd.loadScript(loadPath + "codemirror/modes.min", function() {
-                    
-                    editormd.loadScript(loadPath + "codemirror/addons.min", function() {
-                        
-                        _this.setCodeMirror();
-                        
-                        if (settings.mode !== "gfm" && settings.mode !== "markdown") 
-                        {
-                            _this.loadedDisplay();
-                            
-                            return false;
-                        }
-                        
-                        _this.setToolbar();
-
-                        editormd.loadScript(loadPath + "marked.min", function() {
-
-                            editormd.$marked = marked;
-                                
-                            if (settings.previewCodeHighlight) 
-                            {
-                                editormd.loadScript(loadPath + "prettify.min", function() {
-                                    loadFlowChartOrSequenceDiagram();
-                                });
-                            } 
-                            else
-                            {                  
-                                loadFlowChartOrSequenceDiagram();
-                            }
-                        });
-                        
-                    });
-                    
-                });
-                
-            });
-
-            return this;
-        },
-        
-        /**
-         * 添加 CodeMirror 键盘快捷键
-         * Add CodeMirror keyboard shortcuts key map
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        addKeyMap : function(map, bottom) {
-            this.cm.addKeyMap(map, bottom);
-            
-            return this;
-        },
-        
-        /**
-         * 移除 CodeMirror 键盘快捷键
-         * Remove CodeMirror keyboard shortcuts key map
-         * 
-         * @returns {editormd}  返回editormd的实例对象
-         */
-        
-        removeKeyMap : function(map) {
-            this.cm.removeKeyMap(map);
-            
-            return this;
-        },
-        
-        /**
          * 跳转到指定的行
          * Goto CodeMirror line
          * 
@@ -3239,127 +4691,8 @@ class LinkRenderer {
          * @returns {editormd}                   返回editormd的实例对象
          */
         
-        gotoLine : function (line) {
-            
-            var settings = this.settings;
-            
-            if (!settings.gotoLine)
-            {
-                return this;
-            }
-            
-            var cm       = this.cm;
-            var count    = cm.lineCount();
-            var preview  = this.preview;
-            
-            if (typeof line === "string")
-            {
-                if(line === "last")
-                {
-                    line = count;
-                }
-            
-                if (line === "first")
-                {
-                    line = 1;
-                }
-            }
-            
-            if (typeof line !== "number") 
-            {  
-                alert("Error: The line number must be an integer.");
-                return this;
-            }
-            
-            line  = parseInt(line) - 1;
-            
-            if (line > count)
-            {
-                alert("Error: The line number range 1-" + count);
-                
-                return this;
-            }
-            
-            cm.setCursor( {line : line, ch : 0} );
-            
-            var scrollInfo   = cm.getScrollInfo();
-            var clientHeight = scrollInfo.clientHeight; 
-            var coords       = cm.charCoords({line : line, ch : 0}, "local");
-            
-            cm.scrollTo(null, (coords.top + coords.bottom - clientHeight) / 2);
-            
-            if (settings.watch)
-            {            
-                var cmScroll  = this.codeMirror.find(".CodeMirror-scroll")[0];
-                var height    = $(cmScroll).height(); 
-                var scrollTop = cmScroll.scrollTop;         
-                var percent   = (scrollTop / cmScroll.scrollHeight);
-
-                if (scrollTop === 0)
-                {
-                    preview.scrollTop(0);
-                } 
-                else if (scrollTop + height >= cmScroll.scrollHeight - 16)
-                { 
-                    preview.scrollTop(preview[0].scrollHeight);                    
-                } 
-                else
-                {                    
-                    preview.scrollTop(preview[0].scrollHeight * percent);
-                }
-            }
-
-            cm.focus();
-            
-            return this;
-        },
+        gotoLine : editorGotoLine,
         
-        /**
-         * 扩展当前实例对象，可同时设置多个或者只设置一个
-         * Extend editormd instance object, can mutil setting.
-         * 
-         * @returns {editormd}                  this(editormd instance object.)
-         */
-        
-        extend : function() {
-            if (typeof arguments[1] !== "undefined")
-            {
-                if (typeof arguments[1] === "function")
-                {
-                    arguments[1] = $.proxy(arguments[1], this);
-                }
-
-                this[arguments[0]] = arguments[1];
-            }
-            
-            if (typeof arguments[0] === "object" && typeof arguments[0].length === "undefined")
-            {
-                $.extend(true, this, arguments[0]);
-            }
-
-            return this;
-        },
-        
-        /**
-         * 设置或扩展当前实例对象，单个设置
-         * Extend editormd instance object, one by one
-         * 
-         * @param   {String|Object}   key       option key
-         * @param   {String|Object}   value     option value
-         * @returns {editormd}                  this(editormd instance object.)
-         */
-        
-        set : function (key, value) {
-            
-            if (typeof value !== "undefined" && typeof value === "function")
-            {
-                value = $.proxy(value, this);
-            }
-            
-            this[key] = value;
-
-            return this;
-        },
         
         /**
          * 重新配置
@@ -3394,541 +4727,56 @@ class LinkRenderer {
          * lock screen
          * 
          * @param   {Boolean}    lock    Boolean 布尔值，是否锁屏
-         * @returns {editormd}           返回editormd的实例对象
+         * @returns {editormd} Returns the instance object of editormd
          */
         
         lockScreen : function(lock) {
             editormd.lockScreen(lock);
             this.resize();
-
             return this;
         },
         
         /**
-         * 注册键盘快捷键处理
-         * Register CodeMirror keyMaps (keyboard shortcuts).
-         * 
-         * @param   {Object}    keyMap      KeyMap key/value {"(Ctrl/Shift/Alt)-Key" : function(){}}
-         * @returns {editormd}              return this
-         */
-        
-        registerKeyMaps : function(keyMap) {
-            
-            var _this           = this;
-            var cm              = this.cm;
-            var settings        = this.settings;
-            var toolbarHandlers = editormd.toolbarHandlers;
-            var disabledKeyMaps = settings.disabledKeyMaps;
-            
-            keyMap              = keyMap || null;
-            
-            if (keyMap)
-            {
-                for (var i in keyMap)
-                {
-                    if ($.inArray(i, disabledKeyMaps) < 0)
-                    {
-                        var map = {};
-                        map[i]  = keyMap[i];
-
-                        cm.addKeyMap(keyMap);
-                    }
-                }
-            }
-            else
-            {
-                for (var k in editormd.keyMaps)
-                {
-                    var _keyMap = editormd.keyMaps[k];
-                    var handle = (typeof _keyMap === "string") ? $.proxy(toolbarHandlers[_keyMap], _this) : $.proxy(_keyMap, _this);
-                    
-                    if ($.inArray(k, ["F9", "F10", "F11"]) < 0 && $.inArray(k, disabledKeyMaps) < 0)
-                    {
-                        var _map = {};
-                        _map[k] = handle;
-
-                        cm.addKeyMap(_map);
-                    }
-                }
-                
-                $(window).keydown(function(event) {
-                    
-                    var keymaps = {
-                        "120" : "F9",
-                        "121" : "F10",
-                        "122" : "F11"
-                    };
-                    
-                    if ( $.inArray(keymaps[event.keyCode], disabledKeyMaps) < 0 )
-                    {
-                        switch (event.keyCode)
-                        {
-                            case 120:
-                                    $.proxy(toolbarHandlers["watch"], _this)();
-                                    return false;
-                                break;
-                                
-                            case 121:
-                                    $.proxy(toolbarHandlers["preview"], _this)();
-                                    return false;
-                                break;
-                                
-                            case 122:
-                                    $.proxy(toolbarHandlers["fullscreen"], _this)();                        
-                                    return false;
-                                break;
-                                
-                            default:
-                                break;
-                        }
-                    }
-                });
-            }
-
-            return this;
-        },
-        
-        /**
-         * 加载队列完成之后的显示处理
-         * Display handle of the module queues loaded after.
-         * 
-         * @param   {Boolean}   recreate   是否为重建编辑器
-         * @returns {editormd}             返回editormd的实例对象
-         */
-        
-        loadedDisplay : function(recreate) {
-            
-            recreate             = recreate || false;
-            
-            var _this            = this;
-            var editor           = this.editor;
-            var preview          = this.preview;
-            var settings         = this.settings;
-            
-            this.containerMask.hide();
-            
-            this.save();
-            
-            if (settings.watch) {
-                preview.show();
-            }
-            
-            editor.data("oldWidth", editor.width()).data("oldHeight", editor.height()); // 为了兼容Zepto
-            
-            this.resize();
-            this.registerKeyMaps();
-            
-            $(window).resize(function(){
-                _this.resize();
-            });
-            
-            this.bindScrollEvent().bindChangeEvent();
-            
-            if (!recreate)
-            {
-                $.proxy(settings.onload, this)();
-            }
-            
-            this.state.loaded = true;
-
-            return this;
-        },
-        
-        /**
-         * 设置编辑器的宽度
-         * Set editor width
-         * 
-         * @param   {Number|String} width  编辑器宽度值
-         * @returns {editormd}             返回editormd的实例对象
-         */
-        
-        width : function(width) {
-                
-            this.editor.css("width", (typeof width === "number") ? width  + "px" : width);            
-            this.resize();
-            
-            return this;
-        },
-        
-        /**
-         * 设置编辑器的高度
-         * Set editor height
-         * 
-         * @param   {Number|String} height  编辑器高度值
-         * @returns {editormd}              返回editormd的实例对象
-         */
-        
-        height : function(height) {
-                
-            this.editor.css("height", (typeof height === "number")  ? height  + "px" : height);            
-            this.resize();
-            
-            return this;
-        },
-        
-        /**
-         * 调整编辑器的尺寸和布局
-         * Resize editor layout
-         * 
-         * @param   {Number|String} [width=null]  编辑器宽度值
-         * @param   {Number|String} [height=null] 编辑器高度值
-         * @returns {editormd}                    返回editormd的实例对象
-         */
-        
-        resize : function(width, height) {
-            
-            width  = width  || null;
-            height = height || null;
-            
-            var state      = this.state;
-            var editor     = this.editor;
-            var preview    = this.preview;
-            var toolbar    = this.toolbar;
-            var settings   = this.settings;
-            var codeMirror = this.codeMirror;
-            
-            if (width)
-            {
-                editor.css("width", (typeof width  === "number") ? width  + "px" : width);
-            }
-            
-            if (settings.autoHeight && !state.fullscreen && !state.preview)
-            {
-                editor.css("height", "auto");
-                codeMirror.css("height", "auto");
-            } 
-            else 
-            {
-                if (height) 
-                {
-                    editor.css("height", (typeof height === "number") ? height + "px" : height);
-                }
-                
-                if (state.fullscreen)
-                {
-                    editor.height($(window).height());
-                }
-
-                if (settings.toolbar && !settings.readOnly) 
-                {
-                    codeMirror.css("margin-top", toolbar.height() + 1).height(editor.height() - toolbar.height());
-                } 
-                else
-                {
-                    codeMirror.css("margin-top", 0).height(editor.height());
-                }
-            }
-            
-            if(settings.watch) 
-            {
-                codeMirror.width(editor.width() / 2);
-                preview.width((!state.preview) ? editor.width() / 2 : editor.width());
-                
-                this.previewContainer.css("padding", settings.autoHeight ? "20px 20px 50px 40px" : "20px");
-                
-                if (settings.toolbar && !settings.readOnly) 
-                {
-                    preview.css("top", toolbar.height() + 1);
-                } 
-                else 
-                {
-                    preview.css("top", 0);
-                }
-                
-                if (settings.autoHeight && !state.fullscreen && !state.preview)
-                {
-                    preview.height("");
-                }
-                else
-                {                
-                    var previewHeight = (settings.toolbar && !settings.readOnly) ? editor.height() - toolbar.height() : editor.height();
-                    
-                    preview.height(previewHeight);
-                }
-            } 
-            else 
-            {
-                codeMirror.width(editor.width());
-                preview.hide();
-            }
-            
-            if (state.loaded) 
-            {
-                $.proxy(settings.onresize, this)();
-            }
-
-            return this;
-        },
-        
-        /**
-         * 解析和保存Markdown代码
          * Parse & Saving Markdown source code
-         * 
-         * @returns {editormd}     返回editormd的实例对象
+         * @returns {editormd} Returns the instance object of editormd
          */
         
-        save : function() {
-            
-            if (timer === null)
-            {
-                return this;
-            }
-            
-            var _this            = this;
-            var state            = this.state;
-            var settings         = this.settings;
-            var cm               = this.cm;            
-            var cmValue          = cm.getValue();
-            var previewContainer = this.previewContainer;
-
-            if (settings.mode !== "gfm" && settings.mode !== "markdown") 
-            {
-                this.markdownTextarea.val(cmValue);
-                
-                return this;
-            }
-            
-            var marked          = editormd.$marked;
-            var markdownToC     = this.markdownToC = [];            
-            var rendererOptions = this.markedRendererOptions = {  
-                toc                  : settings.toc,
-                tocm                 : settings.tocm,
-                tocStartLevel        : settings.tocStartLevel,
-                pageBreak            : settings.pageBreak,
-                taskList             : settings.taskList,
-                emoji                : settings.emoji,
-                tex                  : settings.tex,
-                atLink               : settings.atLink,           // for @link
-                emailLink            : settings.emailLink,        // for mail address auto link
-                flowChart            : settings.flowChart,
-                sequenceDiagram      : settings.sequenceDiagram,
-                previewCodeHighlight : settings.previewCodeHighlight,
-            };
-            
-            var markedOptions = this.markedOptions = {
-                renderer    : editormd.markedRenderer(markdownToC, rendererOptions),
-                gfm         : true,
-                tables      : true,
-                breaks      : true,
-                pedantic    : false,
-                sanitize    : (settings.htmlDecode) ? false : true,  // 关闭忽略HTML标签，即开启识别HTML标签，默认为false
-                smartLists  : true,
-                smartypants : true
-            };
-            
-            marked.setOptions(markedOptions);
-                    
-            var newMarkdownDoc = editormd.$marked(cmValue, markedOptions);
-            
-            //console.info("cmValue", cmValue, newMarkdownDoc);
-            
-            newMarkdownDoc = editormd.filterHTMLTags(newMarkdownDoc, settings.htmlDecode);
-            
-            //console.error("cmValue", cmValue, newMarkdownDoc);
-            
-            this.markdownTextarea.text(cmValue);
-            
-            cm.save();
-            
-            if (settings.saveHTMLToTextarea) 
-            {
-                this.htmlTextarea.text(newMarkdownDoc);
-            }
-            
-            if(settings.watch || (!settings.watch && state.preview))
-            {
-                previewContainer.html(newMarkdownDoc);
-
-                previewContainer.find(".task-list-item").each(function () {
-                    $(this).parent().addClass("task-list");
-                });
-
-                this.previewCodeHighlight();
-                
-                if (settings.toc) 
-                {
-                    var tocContainer = (settings.tocContainer === "") ? previewContainer : $(settings.tocContainer);
-                    var tocMenu      = tocContainer.find("." + this.classPrefix + "toc-menu");
-                    
-                    tocContainer.attr("previewContainer", (settings.tocContainer === "") ? "true" : "false");
-                    
-                    if (settings.tocContainer !== "" && tocMenu.length > 0)
-                    {
-                        tocMenu.remove();
-                    }
-                    
-                    editormd.markdownToCRenderer(markdownToC, tocContainer, settings.tocDropdown, settings.tocStartLevel);
-            
-                    if (settings.tocDropdown || tocContainer.find("." + this.classPrefix + "toc-menu").length > 0)
-                    {
-                        editormd.tocDropdownMenu(tocContainer, (settings.tocTitle !== "") ? settings.tocTitle : this.lang.tocTitle);
-                    }
-            
-                    if (settings.tocContainer !== "")
-                    {
-                        previewContainer.find(".markdown-toc").css("border", "none");
-                    }
-                }
-                
-                if (settings.tex)
-                {
-                    if (!editormd.kaTeXLoaded && settings.autoLoadModules) 
-                    {
-                        editormd.loadKaTeX(function() {
-                            editormd.$katex = katex;
-                            editormd.kaTeXLoaded = true;
-                            _this.katexRender();
-                        });
-                    } 
-                    else 
-                    {
-                        editormd.$katex = katex;
-                        this.katexRender();
-                    }
-                }                
-                
-                if (settings.flowChart || settings.sequenceDiagram)
-                {
-                    flowchartTimer = setTimeout(function(){
-                        clearTimeout(flowchartTimer);
-                        _this.flowChartAndSequenceDiagramRender();
-                        flowchartTimer = null;
-                    }, 10);
-                }
-
-                if (state.loaded) 
-                {
-                    $.proxy(settings.onchange, this)();
-                }
-            }
-
-            return this;
-        },
-        
-        /**
-         * 聚焦光标位置
-         * Focusing the cursor position
-         * 
-         * @returns {editormd}         返回editormd的实例对象
-         */
-        
-        focus : function() {
-            this.cm.focus();
-
-            return this;
-        },
-        
-        /**
-         * 设置光标的位置
-         * Set cursor position
-         * 
-         * @param   {Object}    cursor 要设置的光标位置键值对象，例：{line:1, ch:0}
-         * @returns {editormd}         返回editormd的实例对象
-         */
-        
-        setCursor : function(cursor) {
-            this.cm.setCursor(cursor);
-
-            return this;
-        },
-        
-        /**
-         * 获取当前光标的位置
-         * Get the current position of the cursor
-         * 
-         * @returns {Cursor}         返回一个光标Cursor对象
-         */
-        
-        getCursor : function() {
-            return this.cm.getCursor();
-        },
-        
-        
-        /**
-         * 加载并执行插件
-         * Load and execute the plugin
-         * 
-         * @param   {String}     name    plugin name / function name
-         * @param   {String}     path    plugin load path
-         * @returns {editormd}           返回editormd的实例对象
-         */
-        
-        executePlugin : function(name, path) {
-            
-            var _this    = this;
-            var cm       = this.cm;
-            var settings = this.settings;
-            
-            path = settings.pluginPath + path;
-            
-            if (typeof define === "function") 
-            {            
-                if (typeof this[name] === "undefined")
-                {
-                    alert("Error: " + name + " plugin is not found, you are not load this plugin.");
-                    
-                    return this;
-                }
-                
-                this[name](cm);
-                
-                return this;
-            }
-            
-            if ($.inArray(path, editormd.loadFiles.plugin) < 0)
-            {
-                editormd.loadPlugin(path, function() {
-                    editormd.loadPlugins[name] = _this[name];
-                    _this[name](cm);
-                });
-            }
-            else
-            {
-                $.proxy(editormd.loadPlugins[name], this)(cm);
-            }
-            
-            return this;
-        },
+        save : editorSave
     };
+
+    editormd.fn.appendMethod = mdUtil.appendMethod;
+
+    editormd.fn.appendMethod(editorKatex);
+    editormd.fn.appendMethod(editorCodeMirror);
 
     // extend theme prototypes
     editormd.fn = Object.assign({}, editormd.fn, editorWatching);
     editormd.fn = Object.assign({}, editormd.fn, editorDialog);
     editormd.fn = Object.assign({}, editormd.fn, editorToolbar);
     editormd.fn = Object.assign({}, editormd.fn, editorTheme);
-    editormd.fn = Object.assign({}, editormd.fn, editorCodeMirror);
     editormd.fn = Object.assign({}, editormd.fn, editorPreview);
     editormd.fn = Object.assign({}, editormd.fn, editorSearch);
-    editormd.fn = Object.assign({}, editormd.fn, editorKatex);
     editormd.fn = Object.assign({}, editormd.fn, editorContent);
     editormd.fn = Object.assign({}, editormd.fn, editorSelection);
     editormd.fn = Object.assign({}, editormd.fn, editorEvents);
     editormd.fn = Object.assign({}, editormd.fn, editorFlowChart);
     editormd.fn = Object.assign({}, editormd.fn, editorHighlight);
+    editormd.fn = Object.assign({}, editormd.fn, editorDimension);
+    editormd.fn = Object.assign({}, editormd.fn, editorPlugin);
+    editormd.fn = Object.assign({}, editormd.fn, editorCursor);
+    editormd.fn = Object.assign({}, editormd.fn, editorExtendObject);
+    editormd.fn = Object.assign({}, editormd.fn, qKeyMap);
+    editormd.fn = Object.assign({}, editormd.fn, qLoader);
 
     editormd.fn.init.prototype = editormd.fn; 
-
-    /**
-     * 锁屏
-     * lock screen when dialog opening
-     * 
-     * @returns {void}
-     */
-
-    // editormd.dialogLockScreen = function() {
-    //     var settings = this.settings || {dialogLockScreen : true};
-        
-    //     if (settings.dialogLockScreen) 
-    //     {            
-    //         $("html,body").css("overflow", "hidden");
-    //         this.resize();
-    //     }
-    // };
-   
 
     editormd = Object.assign(editormd, editorToolbarHandlers);
     editormd = Object.assign(editormd, editorKeyMaps);
     editormd = Object.assign(editormd, editorString);
+    
+    editormd.appendMethod = mdUtil.appendMethod;
+
+    editormd.appendMethod(editorCodeTree);
 
     editormd.urls = {
         atLinkBase : "https://github.com/"
@@ -3955,382 +4803,18 @@ class LinkRenderer {
      * @param   {Array}    markdownToC     传入用于接收TOC的数组
      * @returns {Renderer} markedRenderer  返回marked的Renderer自定义对象
      */
-
-    editormd.markedRenderer = function(markdownToC, options) {
-        var defaults = {
-            toc                  : true,           // Table of contents
-            tocm                 : false,
-            tocStartLevel        : 1,              // Said from H1 to create ToC  
-            pageBreak            : true,
-            atLink               : true,           // for @link
-            emailLink            : true,           // for mail address auto link
-            taskList             : false,          // Enable Github Flavored Markdown task lists
-            emoji                : false,          // :emoji: , Support Twemoji, fontAwesome, Editor.md logo emojis.
-            tex                  : false,          // TeX(LaTeX), based on KaTeX
-            flowChart            : false,          // flowChart.js only support IE9+
-            sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
-        };
-
-        
-        var settings        = $.extend(defaults, options || {});    
-        var marked          = editormd.$marked;
-        var markedRenderer  = new marked.Renderer();
-        markdownToC         = markdownToC || [];        
-            
-        var regexs          = editormd.regexs;
-        var atLinkReg       = regexs.atLink;
-        var emailReg        = regexs.email;
-        var emailLinkReg    = regexs.emailLink;
-        var pageBreakReg    = regexs.pageBreak;
-
-        const emojiRenderer = new EditorEmojiRenderer({
-            faIconReg: regexs.fontAwesome,
-            emojiReg: regexs.emoji,
-            editormdLogoReg: regexs.editormdLogo,
-            twemojiReg      :regexs.twemoji
-        });
-
-        markedRenderer.emoji = (text) => {
-            if (!settings.emoji) {
-                return text;
-            }
-            return emojiRenderer.execute(text);
-        };
-
-        const atLinkRenderer = new AtLinkRenderer({ 
-            atLinkReg: regexs.atLink, 
-            emailReg: regexs.emailReg,
-            emailLinkReg: regexs.emailLinkReg,
-            atLink: settings.atLink,
-            emailLink : settings.emailLink 
-        });
-        markedRenderer.atLink = function (text) { 
-            return atLinkRenderer.execute( text);
-        }
-        
-        const linkRenderer = new LinkRenderer({ atLinkReg: regexs.atLink, sanitize: this.sanitize });
-        markedRenderer.link = function (href, title, text) { 
-            return linkRenderer.execute(href, title, text);
-        }
-        
-        const headingRenderder = new HeadingRenderder({ markdownToC : markdownToC || [], headerPrefix : markedRenderer.options.headerPrefix });
-        markedRenderer.heading = function(text, level) {
-            // return headingRenderder.execute(text, level);
-        };
-
-        console.log( `=====`, {markedRenderer, marked, editormd});
-        console.trace();
-        
-        markedRenderer.pageBreak = function(text) {
-            if (pageBreakReg.test(text) && settings.pageBreak)
-            {
-                text = "<hr style=\"page-break-after:always;\" class=\"page-break editormd-page-break\" />";
-            }
-            return text;
-        };
-
-        markedRenderer.paragraph = function(text) {
-            var isTeXInline     = /\$\$(.*)\$\$/g.test(text);
-            var isTeXLine       = /^\$\$(.*)\$\$$/.test(text);
-            var isTeXAddClass   = (isTeXLine)     ? " class=\"" + editormd.classNames.tex + "\"" : "";
-            var isToC           = (settings.tocm) ? /^(\[TOC\]|\[TOCM\])$/.test(text) : /^\[TOC\]$/.test(text);
-            var isToCMenu       = /^\[TOCM\]$/.test(text);
-            
-            if (!isTeXLine && isTeXInline) 
-            {
-                text = text.replace(/(\$\$([^\$]*)\$\$)+/g, function($1, $2) {
-                    return "<span class=\"" + editormd.classNames.tex + "\">" + $2.replace(/\$/g, "") + "</span>";
-                });
-            } 
-            else 
-            {
-                text = (isTeXLine) ? text.replace(/\$/g, "") : text;
-            }
-            
-            var tocHTML = "<div class=\"markdown-toc editormd-markdown-toc\">" + text + "</div>";
-            
-            return (isToC) ? ( (isToCMenu) ? "<div class=\"editormd-toc-menu\">" + tocHTML + "</div><br/>" : tocHTML )
-                           : ( (pageBreakReg.test(text)) ? this.pageBreak(text) : "<p" + isTeXAddClass + ">" + this.atLink(this.emoji(text)) + "</p>\n" );
-        };
-
-        markedRenderer.code = function (code, lang) {
-
-            if (lang === "seq" || lang === "sequence")
-            {
-                return "<div class=\"sequence-diagram\">" + code + "</div>";
-            } 
-            else if ( lang === "flow")
-            {
-                return "<div class=\"flowchart\">" + code + "</div>";
-            } 
-            else if ( lang === "math" || lang === "latex" || lang === "katex")
-            {
-                return "<p class=\"" + editormd.classNames.tex + "\">" + code + "</p>";
-            } 
-            else 
-            {
-                return marked.Renderer.prototype.code.apply(this, arguments);
-            }
-        };
-
-        markedRenderer.tablecell = function(content, flags) {
-            var type = (flags.header) ? "th" : "td";
-            var tag  = (flags.align)  ? "<" + type +" style=\"text-align:" + flags.align + "\">" : "<" + type + ">";
-            
-            return tag + this.atLink(this.emoji(content)) + "</" + type + ">\n";
-        };
-
-        markedRenderer.listitem = function(text, task) {
-            if (settings.taskList && task) {
-                text = text.replace("<input ", "<input class='task-list-item-checkbox' ");
-
-                return "<li class=\"task-list-item\">" + this.atLink(this.emoji(text)) + "</li>";
-            } else {
-                return "<li>" + this.atLink(this.emoji(text)) + "</li>";
-            }
-        };
-        
-        return markedRenderer;
-    };
+    editormd.markedRenderer = markedRenderer;
     
     /**
-     *
-     * 生成TOC(Table of Contents)
-     * Creating ToC (Table of Contents)
-     * 
-     * @param   {Array}    toc             从marked获取的TOC数组列表
-     * @param   {Element}  container       插入TOC的容器元素
-     * @param   {Integer}  startLevel      Hx 起始层级
-     * @param   {object}   markedRenderer  Marked Renderer
-     * @returns {Object}   tocContainer    返回ToC列表容器层的jQuery对象元素
-     */
-    
-    editormd.markdownToCRenderer = function(toc, container, tocDropdown, startLevel, markedRenderer) {
-        markedRenderer = markedRenderer || null;
-
-        var html        = "";    
-        var lastLevel   = 0;
-        var classPrefix = this.classPrefix;
-        
-        startLevel      = startLevel  || 1;
-        
-        for (var i = 0, len = toc.length; i < len; i++) 
-        {
-            var text  = toc[i].text;
-            var level = toc[i].level;
-            
-            if (level < startLevel) {
-                continue;
-            }
-            
-            if (level > lastLevel) 
-            {
-                html += "";
-            }
-            else if (level < lastLevel) 
-            {
-                html += (new Array(lastLevel - level + 2)).join("</ul></li>");
-            } 
-            else 
-            {
-                html += "</ul></li>";
-            }
-
-            // fixed https://github.com/pandao/editor.md/issues/476
-            // fixed https://github.com/pandao/editor.md/issues/649
-            var href = text.replace(/(<([^>]+)>)/ig, ""); // /<[^>]*>/g
-
-            if (markedRenderer) {
-                text = markedRenderer.emoji(text); // Fixed Heading can't has emoji code
-            }
-
-            html += "<li><a class=\"toc-level-" + level + "\" href=\"#" + href + "\" level=\"" + level + "\">" + text + "</a><ul>";
-            lastLevel = level;
-        }
-        
-        var tocContainer = container.find(".markdown-toc");
-        
-        if ((tocContainer.length < 1 && container.attr("previewContainer") === "false"))
-        {
-            var tocHTML = "<div class=\"markdown-toc " + classPrefix + "markdown-toc\"></div>";
-            
-            tocHTML = (tocDropdown) ? "<div class=\"" + classPrefix + "toc-menu\">" + tocHTML + "</div>" : tocHTML;
-            
-            container.html(tocHTML);
-            
-            tocContainer = container.find(".markdown-toc");
-        }
-        
-        if (tocDropdown)
-        {
-            tocContainer.wrap("<div class=\"" + classPrefix + "toc-menu\"></div><br/>");
-        }
-        
-        tocContainer.html("<ul class=\"markdown-toc-list\"></ul>").children(".markdown-toc-list").html(html.replace(/\r?\n?\<ul\>\<\/ul\>/g, ""));
-        
-        return tocContainer;
-    };
-    
-    /**
-     *
-     * 生成TOC下拉菜单
-     * Creating ToC dropdown menu
-     * 
-     * @param   {Object}   container       插入TOC的容器jQuery对象元素
-     * @param   {String}   tocTitle        ToC title
-     * @returns {Object}                   return toc-menu object
-     */
-    
-    editormd.tocDropdownMenu = function(container, tocTitle) {
-        
-        tocTitle      = tocTitle || "Table of Contents";
-        
-        var zindex    = 400;
-        var tocMenus  = container.find("." + this.classPrefix + "toc-menu");
-
-        tocMenus.each(function() {
-            var $this  = $(this);
-            var toc    = $this.children(".markdown-toc");
-            var icon   = "<i class=\"fa fa-angle-down\"></i>";
-            var btn    = "<a href=\"javascript:;\" class=\"toc-menu-btn\">" + icon + tocTitle + "</a>";
-            var menu   = toc.children("ul");            
-            var list   = menu.find("li");
-            
-            toc.append(btn);
-            
-            list.first().before("<li><h1>" + tocTitle + " " + icon + "</h1></li>");
-            
-            $this.mouseover(function(){
-                menu.show();
-
-                list.each(function(){
-                    var li = $(this);
-                    var ul = li.children("ul");
-
-                    if (ul.html() === "")
-                    {
-                        ul.remove();
-                    }
-
-                    if (ul.length > 0 && ul.html() !== "")
-                    {
-                        var firstA = li.children("a").first();
-
-                        if (firstA.children(".fa").length < 1)
-                        {
-                            firstA.append( $(icon).css({ float:"right", paddingTop:"4px" }) );
-                        }
-                    }
-
-                    li.mouseover(function(){
-                        ul.css("z-index", zindex).show();
-                        zindex += 1;
-                    }).mouseleave(function(){
-                        ul.hide();
-                    });
-                });
-            }).mouseleave(function(){
-                menu.hide();
-            }); 
-        });       
-        
-        return tocMenus;
-    };
-    
-    /**
-     * 简单地过滤指定的HTML标签
      * Filter custom html tags
      * 
      * @param   {String}   html          要过滤HTML
      * @param   {String}   filters       要过滤的标签
      * @returns {String}   html          返回过滤的HTML
      */
-    
-    editormd.filterHTMLTags = function(html, filters) {
-        
-        if (typeof html !== "string") {
-            html = html.toString();
-        }
-            
-        if (typeof filters !== "string") {
-            return html;
-        }
-
-        var expression = filters.split("|");
-        var filterTags = expression[0].split(",");
-        var attrs      = expression[1];
-
-        for (var i = 0, len = filterTags.length; i < len; i++)
-        {
-            var tag = filterTags[i];
-
-            html = html.replace(new RegExp("\<\s*" + tag + "\s*([^\>]*)\>([^\>]*)\<\s*\/" + tag + "\s*\>", "igm"), "");
-        }
-        
-        //return html;
-
-        if (typeof attrs !== "undefined")
-        {
-            var htmlTagRegex = /\<(\w+)\s*([^\>]*)\>([^\>]*)\<\/(\w+)\>/ig;
-
-            if (attrs === "*")
-            {
-                html = html.replace(htmlTagRegex, function($1, $2, $3, $4, $5) {
-                    return "<" + $2 + ">" + $4 + "</" + $5 + ">";
-                });         
-            }
-            else if (attrs === "on*")
-            {
-                html = html.replace(htmlTagRegex, function($1, $2, $3, $4, $5) {
-                    var el = $("<" + $2 + ">" + $4 + "</" + $5 + ">");
-                    var _attrs = $($1)[0].attributes;
-                    var $attrs = {};
-                    
-                    $.each(_attrs, function(i, e) {
-                        if (e.nodeName !== "\"") {
-                            $attrs[e.nodeName] = e.nodeValue;
-
-                            // Fixed like <a href="javascript:alert('xss')"></a> XSS problem, Copy from pull request #532
-                            if (e.nodeName === "href" && e.nodeValue.toLowerCase().indexOf("javascript:") >= 0) {
-                                $attrs[e.nodeName] = "javascript:;";
-                            }
-                        }
-                    });
-                    
-                    $.each($attrs, function(i) {                        
-                        if (i.indexOf("on") === 0) {
-                            delete $attrs[i];
-                        }
-                    });
-                    
-                    el.attr($attrs);
-                    
-                    var text = (typeof el[1] !== "undefined") ? $(el[1]).text() : "";
-
-                    return el[0].outerHTML + text;
-                });
-            }
-            else
-            {
-                html = html.replace(htmlTagRegex, function($1, $2, $3, $4) {
-                    var filterAttrs = attrs.split(",");
-                    var el = $($1);
-                    el.html($4);
-
-                    $.each(filterAttrs, function(i) {
-                        el.attr(filterAttrs[i], null);
-                    });
-
-                    return el[0].outerHTML;
-                });
-            }
-        }
-        
-        return html;
-    };
+    editormd.filterHTMLTags = editorFilterHTMLTags;
     
     /**
-     * 将Markdown文档解析为HTML用于前台显示
      * Parse Markdown to HTML for Font-end preview.
      * 
      * @param   {String}   id            用于显示HTML的对象ID
@@ -4338,169 +4822,11 @@ class LinkRenderer {
      * @returns {Object}   div           返回jQuery对象元素
      */
     
-    editormd.markdownToHTML = function(id, options) {
-        var defaults = {
-            gfm                  : true,
-            toc                  : true,
-            tocm                 : false,
-            tocStartLevel        : 1,
-            tocTitle             : "目录",
-            tocDropdown          : false,
-            tocContainer         : "",
-            markdown             : "",
-            markdownSourceCode   : false,
-            htmlDecode           : false,
-            autoLoadKaTeX        : true,
-            pageBreak            : true,
-            atLink               : true,    // for @link
-            emailLink            : true,    // for mail address auto link
-            tex                  : false,
-            taskList             : false,   // Github Flavored Markdown task lists
-            emoji                : false,
-            flowChart            : false,
-            sequenceDiagram      : false,
-            previewCodeHighlight : true
-        };
-        
-        editormd.$marked  = marked;
-
-        var div           = $("#" + id);
-        var settings      = div.settings = $.extend(true, {}, defaults, options || {});
-        var saveTo        = div.find("textarea");
-
-        if (saveTo.length < 1)
-        {
-            div.append("<textarea></textarea>");
-            saveTo        = div.find("textarea");
-        }        
-        
-        var markdownDoc   = (settings.markdown === "") ? saveTo.val() : settings.markdown; 
-        var markdownToC   = [];
-
-        var rendererOptions = {  
-            toc                  : settings.toc,
-            tocm                 : settings.tocm,
-            tocStartLevel        : settings.tocStartLevel,
-            taskList             : settings.taskList,
-            emoji                : settings.emoji,
-            tex                  : settings.tex,
-            pageBreak            : settings.pageBreak,
-            atLink               : settings.atLink,           // for @link
-            emailLink            : settings.emailLink,        // for mail address auto link
-            flowChart            : settings.flowChart,
-            sequenceDiagram      : settings.sequenceDiagram,
-            previewCodeHighlight : settings.previewCodeHighlight,
-        };
-
-        var markedOptions = {
-            renderer    : editormd.markedRenderer(markdownToC, rendererOptions),
-            gfm         : settings.gfm,
-            tables      : true,
-            breaks      : true,
-            pedantic    : false,
-            sanitize    : (settings.htmlDecode) ? false : true, // 是否忽略HTML标签，即是否开启HTML标签解析，为了安全性，默认不开启
-            smartLists  : true,
-            smartypants : true
-        };
-
-        markdownDoc = markdownDoc.toString();
-
-        var markdownParsed = marked(markdownDoc, markedOptions);
-
-        markdownParsed = editormd.filterHTMLTags(markdownParsed, settings.htmlDecode);
-
-        if (settings.markdownSourceCode) {
-            saveTo.text(markdownDoc);
-        } else {
-            saveTo.remove();
-        }
-        
-        div.addClass("markdown-body " + this.classPrefix + "html-preview").append(markdownParsed);
-
-        div.find(".task-list-item").each(function () {
-            $(this).parent().addClass("task-list");
-        });
-        
-        var tocContainer = (settings.tocContainer !== "") ? $(settings.tocContainer) : div;
-        
-        if (settings.tocContainer !== "")
-        {
-            tocContainer.attr("previewContainer", false);
-        }
-         
-        if (settings.toc) 
-        {
-            div.tocContainer = this.markdownToCRenderer(markdownToC, tocContainer, settings.tocDropdown, settings.tocStartLevel);
-            
-            if (settings.tocDropdown || div.find("." + this.classPrefix + "toc-menu").length > 0)
-            {
-                this.tocDropdownMenu(div, settings.tocTitle);
-            }
-            
-            if (settings.tocContainer !== "")
-            {
-                div.find(".editormd-toc-menu, .editormd-markdown-toc").remove();
-            }
-        }
-            
-        if (settings.previewCodeHighlight) 
-        {
-            div.find("pre").addClass("prettyprint linenums");
-            window.prettyPrint();
-        }
-        
-        if (!editormd.isIE8) 
-        {
-            if (settings.flowChart) {
-                div.find(".flowchart").flowChart(); 
-            }
-
-            if (settings.sequenceDiagram) {
-                var $sequenceDiagram = div.find(".sequence-diagram");
-
-                if ($sequenceDiagram.length > 0) {
-                    $sequenceDiagram.sequenceDiagram({theme: "simple"});
-                }
-            }
-        }
-
-        if (settings.tex)
-        {
-            var katexHandle = function() {
-                div.find("." + editormd.classNames.tex).each(function(){
-                    var tex  = $(this);                    
-                    katex.render(tex.html().replace(/&lt;/g, "<").replace(/&gt;/g, ">"), tex[0]);                    
-                    tex.find(".katex").css("font-size", "1.6em");
-                });
-            };
-            
-            if (settings.autoLoadKaTeX && !editormd.$katex && !editormd.kaTeXLoaded)
-            {
-                this.loadKaTeX(function() {
-                    editormd.$katex      = katex;
-                    editormd.kaTeXLoaded = true;
-                    katexHandle();
-                });
-            }
-            else
-            {
-                katexHandle();
-            }
-        }
-        
-        div.getMarkdown = function() {            
-            return saveTo.val();
-        };
-        
-        return div;
-    };
-    
-    
-
+    editormd.markdownToHTML = editorMarkdownToHTML;
     editormd.isIE    = (navigator.appName == "Microsoft Internet Explorer");
     editormd.isIE8   = (editormd.isIE && navigator.appVersion.match(/8./i) == "8.");
 
-
+    editormd = Object.assign(editormd, editorTableOfContent);
     editormd = Object.assign(editormd, editorLoader);
     editormd = Object.assign(editormd, editorKatex);
 
@@ -4524,245 +4850,7 @@ class LinkRenderer {
      * @returns {dialog} 返回创建的dialog的jQuery实例对象
      */
 
-    editormd.createDialog = function(options) {
-        var defaults = {
-            name : "",
-            width : 420,
-            height: 240,
-            title : "",
-            drag  : true,
-            closed : true,
-            cached : false,
-            content : "",
-            mask : true,
-            maskStyle : {
-                backgroundColor : "#fff",
-                opacity : 0.1
-            },
-            lockScreen : true,
-            footer : true,
-            buttons : false
-        };
-
-        options          = $.extend(true, defaults, options);
-        
-        var $this        = this;
-        var editor       = this.editor;
-        var classPrefix  = editormd.classPrefix;
-        var guid         = (new Date()).getTime();
-        var dialogName   = ( (options.name === "") ? classPrefix + "dialog-" + guid : options.name);
-        var html         = "<div class=\"" + classPrefix + "dialog " + dialogName + "\">";
-
-        if (options.title !== "")
-        {
-            html += "<div class=\"" + classPrefix + "dialog-header\"" + ( (options.drag) ? " style=\"cursor: move;\"" : "" ) + ">";
-            html += "<strong class=\"" + classPrefix + "dialog-title\">" + options.title + "</strong>";
-            html += "</div>";
-        }
-
-        if (options.closed)
-        {
-            html += "<a href=\"javascript:;\" class=\"fa fa-close " + classPrefix + "dialog-close\"></a>";
-        }
-
-        html += "<div class=\"" + classPrefix + "dialog-container\">" + options.content;                    
-
-        if (options.footer || typeof options.footer === "string") 
-        {
-            html += "<div class=\"" + classPrefix + "dialog-footer\">" + ( (typeof options.footer === "boolean") ? "" : options.footer) + "</div>";
-        }
-
-        html += "</div>";
-        html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-bg\"></div>";
-        html += "<div class=\"" + classPrefix + "dialog-mask " + classPrefix + "dialog-mask-con\"></div>";
-        html += "</div>";
-
-        editor.append(html);
-
-        var dialog = editor.find("." + dialogName);
-
-        dialog.lockScreen = function(lock) {
-            if (options.lockScreen)
-            {                
-                $("html,body").css("overflow", (lock) ? "hidden" : "");
-                $this.resize();
-            }
-
-            return dialog;
-        };
-
-        dialog.showMask = function() {
-            if (options.mask)
-            {
-                editor.find("." + classPrefix + "mask").css(options.maskStyle).css("z-index", editormd.dialogZindex - 1).show();
-            }
-            return dialog;
-        };
-
-        dialog.hideMask = function() {
-            if (options.mask)
-            {
-                editor.find("." + classPrefix + "mask").hide();
-            }
-
-            return dialog;
-        };
-
-        dialog.loading = function(show) {                        
-            var loading = dialog.find("." + classPrefix + "dialog-mask");
-            loading[(show) ? "show" : "hide"]();
-
-            return dialog;
-        };
-
-        dialog.lockScreen(true).showMask();
-
-        dialog.show().css({
-            zIndex : editormd.dialogZindex,
-            border : (editormd.isIE8) ? "1px solid #ddd" : "",
-            width  : (typeof options.width  === "number") ? options.width + "px"  : options.width,
-            height : (typeof options.height === "number") ? options.height + "px" : options.height
-        });
-
-        var dialogPosition = function(){
-            dialog.css({
-                top    : ($(window).height() - dialog.height()) / 2 + "px",
-                left   : ($(window).width() - dialog.width()) / 2 + "px"
-            });
-        };
-
-        dialogPosition();
-
-        $(window).resize(dialogPosition);
-
-        dialog.children("." + classPrefix + "dialog-close").bind("click", function() {
-            dialog.hide().lockScreen(false).hideMask();
-
-            if (!options.cached) {
-                dialog.remove();
-            }
-        });
-
-        if (typeof options.buttons === "object")
-        {
-            var footer = dialog.footer = dialog.find("." + classPrefix + "dialog-footer");
-
-            for (var key in options.buttons)
-            {
-                var btn = options.buttons[key];
-                var btnClassName = classPrefix + key + "-btn";
-
-                footer.append("<button class=\"" + classPrefix + "btn " + btnClassName + "\">" + btn[0] + "</button>");
-                btn[1] = $.proxy(btn[1], dialog);
-                footer.children("." + btnClassName).bind("click", btn[1]);
-            }
-        }
-
-        if (options.title !== "" && options.drag)
-        {                        
-            var posX, posY;
-            var dialogHeader = dialog.children("." + classPrefix + "dialog-header");
-
-            if (!options.mask) {
-                dialogHeader.bind("click", function(){
-                    editormd.dialogZindex += 2;
-                    dialog.css("z-index", editormd.dialogZindex);
-                });
-            }
-
-            var userCanSelect = function (obj) {
-                obj.removeClass(classPrefix + "user-unselect").off("selectstart");
-            };
-
-            var userUnselect = function (obj) {
-                obj.addClass(classPrefix + "user-unselect").on("selectstart", function() { // selectstart for IE                        
-                    return false;
-                });
-            };
-
-            var moveAction = function (e) {
-                e = e || window.event;  //IE
-
-                var left, top, nowLeft = parseInt(dialog[0].style.left), nowTop = parseInt(dialog[0].style.top);
-
-                if( nowLeft >= 0 ) {
-                    if( nowLeft + dialog.width() <= $(window).width()) {
-                        left = e.clientX - posX;
-                    } else {	
-                        left = $(window).width() - dialog.width();
-                        document.onmousemove = null;
-                    }
-                } else {
-                    left = 0;
-                    document.onmousemove = null;
-                }
-
-                if( nowTop >= 0 ) {
-                    top = e.clientY - posY;
-                } else {
-                    top = 0;
-                    document.onmousemove = null;
-                }
-
-
-                document.onselectstart = function() {
-                    return false;
-                };
-
-                userUnselect($("body"));
-                userUnselect(dialog);
-                dialog[0].style.left = left + "px";
-                dialog[0].style.top  = top + "px";
-            };
-
-            dialogHeader.mousedown(function(e) {
-                e = e || window.event;  //IE
-                posX = e.clientX - parseInt(dialog[0].style.left);
-                posY = e.clientY - parseInt(dialog[0].style.top);
-
-                document.onmousemove = moveAction;                   
-            });
-
-            document.onmouseup = function() {                            
-                userCanSelect($("body"));
-                userCanSelect(dialog);
-
-                document.onselectstart = null;         
-                document.onmousemove = null;
-            };
-
-            dialogHeader.touchDraggable = function() {
-                var offset = null;
-                var start  = function(e) {
-                    var orig = e.originalEvent; 
-                    var pos  = $(this).parent().position();
-
-                    offset = {
-                        x : orig.changedTouches[0].pageX - pos.left,
-                        y : orig.changedTouches[0].pageY - pos.top
-                    };
-                };
-
-                var move = function(e) {
-                    e.preventDefault();
-                    var orig = e.originalEvent;
-
-                    $(this).parent().css({
-                        top  : orig.changedTouches[0].pageY - offset.y,
-                        left : orig.changedTouches[0].pageX - offset.x
-                    });
-                };
-
-                this.bind("touchstart", start).bind("touchmove", move);
-            };
-
-            dialogHeader.touchDraggable();
-        }
-
-        editormd.dialogZindex += 2;
-
-        return dialog;
-    };
+    editormd.createDialog = editorCreateDialog;
     
     /**
      * 鼠标和触摸事件的判断/选择方法
@@ -4785,18 +4873,6 @@ class LinkRenderer {
         } catch(e) {}
 
         return eventType;
-    };
-
-     /**
-     * 获取指定区间的随机整数
-     *
-     * @return {Int}   int    返回随机生成的整数
-     */
-
-    editormd.rand = function (n, m) {
-        var c = m - n + 1;
-
-        return Math.floor(Math.random() * c + n);
     };
 
     editormd = Object.assign(editormd, editorDate);

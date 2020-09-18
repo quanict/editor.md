@@ -30,11 +30,11 @@ class HeadingRenderder extends EditorRenderer {
             slug  : escapedText
         };
         
-        var isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
+        let isChinese = /^[\u4e00-\u9fa5]+$/.test(text);
+        
         var id        = (isChinese) ? escape(text).replace(/\%/g, "") : text.toLowerCase().replace(/[^\w]+/g, "-");
-
         if (_headingIds.indexOf(id) >= 0) {
-            id += editormd.rand(100, 999999);
+            id += mdUtil.rand(100, 999999);
         }
 
         _headingIds.push(id);
@@ -43,13 +43,13 @@ class HeadingRenderder extends EditorRenderer {
 
         markdownToC.push(toc);
         
-        var headingHTML = "<h" + level + " id=\"h"+ level + "-" + headerPrefix + id +"\">";
-        
-        headingHTML    += "<a name=\"" + text + "\" class=\"reference-link\"></a>";
-        headingHTML    += "<span class=\"header-link octicon octicon-link\"></span>";
-        headingHTML    += (hasLinkReg) ? this.atLink(this.emoji(linkText)) : this.atLink(this.emoji(text));
-        headingHTML    += "</h" + level + ">";
-        console.log(`render header`)
-        return headingHTML;
+        let header = $(`<h${level}/>`, { id: `h${level}-${headerPrefix + id}` });
+        let referecenLink = $(`<a/>`, { name: text, class: 'reference-link' });
+        header.append(referecenLink);
+
+        let octiconLink = $(`<span/>`, { class: 'header-link octicon octicon-link' });
+        header.append(octiconLink);
+
+        return header;
     }
 }

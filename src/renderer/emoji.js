@@ -6,7 +6,6 @@ class EditorEmojiRenderer {
     }
 
     execute(text) {
-            
         const regexDefault = this.config;
         text = text.replace(editormd.regexs.emojiDatetime, function($1) {           
             return $1.replace(/:/g, "&#58;");
