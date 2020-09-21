@@ -51,8 +51,10 @@ function markedRenderer(markdownToC, options) {
         emailReg: regexs.emailReg,
         emailLinkReg: regexs.emailLinkReg,
         atLink: settings.atLink,
-        emailLink : settings.emailLink 
+        emailLink : settings.emailLink,
+        atLinkBase : editormd.urls.atLinkBase
     });
+
     markedRenderer.atLink = function (text) { 
         return atLinkRenderer.execute( text);
     }

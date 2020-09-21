@@ -6,7 +6,7 @@ class AtLinkRenderer {
     }
 
     execute(text) {
-        const { atLinkReg, emailReg, emailLinkReg, atLink, emailLink } = this.options;
+        const { atLinkReg, emailReg, emailLinkReg, atLink, emailLink, atLinkBase } = this.options;
         if (atLinkReg.test(text))
         { 
             if (atLink) 
@@ -16,7 +16,7 @@ class AtLinkRenderer {
                 });
 
                 text = text.replace(atLinkReg, function($1, $2) {
-                    return "<a href=\"" + editormd.urls.atLinkBase + "" + $2 + "\" title=\"&#64;" + $2 + "\" class=\"at-link\">" + $1 + "</a>";
+                    return "<a href=\"" + atLinkBase + "" + $2 + "\" title=\"&#64;" + $2 + "\" class=\"at-link\">" + $1 + "</a>";
                 }).replace(/_#_&#64;_#_/g, "@");
             }
             

@@ -284,19 +284,6 @@
             return this;
         },
         
-        /**
-         * 锁屏
-         * lock screen
-         * 
-         * @param   {Boolean}    lock    Boolean 布尔值，是否锁屏
-         * @returns {editormd} Returns the instance object of editormd
-         */
-        
-        lockScreen : function(lock) {
-            editormd.lockScreen(lock);
-            this.resize();
-            return this;
-        },
         
         /**
          * Parse & Saving Markdown source code
@@ -332,12 +319,15 @@
 
     editormd.fn.init.prototype = editormd.fn; 
 
-    editormd = Object.assign(editormd, editorToolbarHandlers);
-    editormd = Object.assign(editormd, editorKeyMaps);
-    editormd = Object.assign(editormd, editorString);
+    // editormd = Object.assign(editormd, editorToolbarHandlers);
+    // editormd = Object.assign(editormd, editorKeyMaps);
+    // editormd = Object.assign(editormd, editorString);
     
     editormd.appendMethod = mdUtil.appendMethod;
 
+    editormd.appendMethod(editorToolbarHandlers);
+    editormd.appendMethod(editorKeyMaps);
+    editormd.appendMethod(editorString);
     editormd.appendMethod(editorCodeTree);
 
     editormd.urls = {
@@ -388,22 +378,17 @@
     editormd.isIE    = (navigator.appName == "Microsoft Internet Explorer");
     editormd.isIE8   = (editormd.isIE && navigator.appVersion.match(/8./i) == "8.");
 
-    editormd = Object.assign(editormd, editorTableOfContent);
-    editormd = Object.assign(editormd, editorLoader);
-    editormd = Object.assign(editormd, editorKatex);
+    // editormd = Object.assign(editormd, editorTableOfContent);
+    // editormd = Object.assign(editormd, editorLoader);
+    // editormd = Object.assign(editormd, editorKatex);
+    editormd.appendMethod(editorTableOfContent); 
+    editormd.appendMethod(editorLoader); 
+    editormd.appendMethod(editorKatex); 
 
-    /**
-     * 锁屏
-     * lock screen
-     * 
-     * @param   {Boolean}   lock   Boolean 布尔值，是否锁屏
-     * @returns {void}
-     */
-    
-    editormd.lockScreen = function(lock) {
-        $("html,body").css("overflow", (lock) ? "hidden" : "");
-    };
-        
+    editormd.appendMethod(editorLockScreen);
+    editormd.appendMethod(editorMouseEvents); 
+    editormd.appendMethod(editorDate); 
+
     /**
      * 动态创建对话框
      * Creating custom dialogs
@@ -413,31 +398,7 @@
      */
 
     editormd.createDialog = editorCreateDialog;
-    
-    /**
-     * 鼠标和触摸事件的判断/选择方法
-     * MouseEvent or TouchEvent type switch
-     * 
-     * @param   {String} [mouseEventType="click"]    供选择的鼠标事件
-     * @param   {String} [touchEventType="touchend"] 供选择的触摸事件
-     * @returns {String} EventType                   返回事件类型名称
-     */
-    
-    editormd.mouseOrTouch = function(mouseEventType, touchEventType) {
-        mouseEventType = mouseEventType || "click";
-        touchEventType = touchEventType || "touchend";
-        
-        var eventType  = mouseEventType;
-
-        try {
-            document.createEvent("TouchEvent");
-            eventType = touchEventType;
-        } catch(e) {}
-
-        return eventType;
-    };
-
-    editormd = Object.assign(editormd, editorDate);
+    // editormd = Object.assign(editormd, editorDate);
 
     return editormd;
 
