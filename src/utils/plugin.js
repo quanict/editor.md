@@ -21,12 +21,10 @@ const editorPlugin = {
             if (typeof this[name] === "undefined")
             {
                 alert("Error: " + name + " plugin is not found, you are not load this plugin.");
-                
                 return this;
             }
             
             this[name](cm);
-            
             return this;
         }
         
