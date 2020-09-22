@@ -1,3 +1,27 @@
+function cleanUrl(sanitize, base, href) {
+    if (sanitize) {
+      let prot;
+      try {
+        prot = decodeURIComponent(unescape(href))
+          .replace(nonWordAndColonTest, '')
+          .toLowerCase();
+      } catch (e) {
+        return null;
+      }
+      if (prot.indexOf('javascript:') === 0 || prot.indexOf('vbscript:') === 0 || prot.indexOf('data:') === 0) {
+        return null;
+      }
+    }
+    if (base && !originIndependentUrl.test(href)) {
+      href = resolveUrl(base, href);
+    }
+    try {
+      href = encodeURI(href).replace(/%25/g, '%');
+    } catch (e) {
+      return null;
+    }
+    return href;
+  }
 const editorCodeTree = {
     files: [],
     
@@ -802,7 +826,12 @@ function markedRenderer(markdownToC, options) {
         sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
     };
     
-    var settings        = $.extend(defaults, options || {});    
+    var settings = $.extend(defaults, options || {});
+
+    // this.options.imgPath = null;
+
+    
+    
     var marked          = editormd.$marked;
     var markedRenderer  = new marked.Renderer();
     markdownToC         = markdownToC || [];        
@@ -812,6 +841,11 @@ function markedRenderer(markdownToC, options) {
     var emailReg        = regexs.email;
     var emailLinkReg    = regexs.emailLink;
     var pageBreakReg    = regexs.pageBreak;
+
+    markedRenderer.options.imgPath = null;
+
+    markedRenderer.options = $.extend( {}, markedRenderer.options, editormd.settings, );
+    console.log(`test ${editormd.settings.imgPath}|${markedRenderer.options.imgPath}`, {markedRenderer});
 
     const emojiRenderer = new EditorEmojiRenderer({
         faIconReg: regexs.fontAwesome,
@@ -958,8 +992,24 @@ function markedRenderer(markdownToC, options) {
 
     markedRenderer.image = function (href, title, text) { 
         let _this = this;
-        console.log('this',{_this})
-        // return marked.Renderer.image(href, title, text);
+        
+        // href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
+        if (href === null) {
+            return text;
+        }
+
+        let out = '<img src="' + href + '" alt="' + text + '"';
+        if (title) {
+            out += ' title="' + title + '"';
+        }
+        out += '/>';
+
+        const { options } = _this;
+        console.log(`get settting:${options.imgPath}`, { options });
+
+
+        // return this.prototype.image(href, title, text);
+        return out;
     }
     
     
@@ -4645,6 +4695,7 @@ class LinkRenderer {
                 id               = (typeof id === "object") ? settings.id : id;
                 editor           = this.editor       = $("#" + id);
             }
+
             this.id              = id;
             this.lang            = settings.lang;
 
@@ -4687,7 +4738,10 @@ class LinkRenderer {
             {
                 markdownTextarea.attr("name", (settings.name !== "") ? settings.name : id + "-markdown-doc");
             }
-            
+            console.log(`===`, { markdownTextarea });
+            if (typeof markdownTextarea.get(0).dataset.imgPath !== 'undefined') {
+                settings.imgPath = markdownTextarea.get(0).dataset.imgPath;
+            }
             var appendElements = [
                 (!settings.readOnly) ? "<a href=\"javascript:;\" class=\"fa fa-close " + classPrefix + "preview-close-btn\"></a>" : "",
                 ( (settings.saveHTMLToTextarea) ? "<textarea class=\"" + classNames.textarea.html + "\" name=\"" + id + "-html-code\"></textarea>" : "" ),

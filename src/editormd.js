@@ -137,6 +137,7 @@
                 id               = (typeof id === "object") ? settings.id : id;
                 editor           = this.editor       = $("#" + id);
             }
+
             this.id              = id;
             this.lang            = settings.lang;
 
@@ -179,7 +180,10 @@
             {
                 markdownTextarea.attr("name", (settings.name !== "") ? settings.name : id + "-markdown-doc");
             }
-            
+            console.log(`===`, { markdownTextarea });
+            if (typeof markdownTextarea.get(0).dataset.imgPath !== 'undefined') {
+                settings.imgPath = markdownTextarea.get(0).dataset.imgPath;
+            }
             var appendElements = [
                 (!settings.readOnly) ? "<a href=\"javascript:;\" class=\"fa fa-close " + classPrefix + "preview-close-btn\"></a>" : "",
                 ( (settings.saveHTMLToTextarea) ? "<textarea class=\"" + classNames.textarea.html + "\" name=\"" + id + "-html-code\"></textarea>" : "" ),

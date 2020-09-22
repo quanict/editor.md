@@ -26,7 +26,12 @@ function markedRenderer(markdownToC, options) {
         sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
     };
     
-    var settings        = $.extend(defaults, options || {});    
+    var settings = $.extend(defaults, options || {});
+
+    // this.options.imgPath = null;
+
+    
+    
     var marked          = editormd.$marked;
     var markedRenderer  = new marked.Renderer();
     markdownToC         = markdownToC || [];        
@@ -36,6 +41,11 @@ function markedRenderer(markdownToC, options) {
     var emailReg        = regexs.email;
     var emailLinkReg    = regexs.emailLink;
     var pageBreakReg    = regexs.pageBreak;
+
+    markedRenderer.options.imgPath = null;
+
+    markedRenderer.options = $.extend( {}, markedRenderer.options, editormd.settings, );
+    console.log(`test ${editormd.settings.imgPath}|${markedRenderer.options.imgPath}`, {markedRenderer});
 
     const emojiRenderer = new EditorEmojiRenderer({
         faIconReg: regexs.fontAwesome,
@@ -182,8 +192,24 @@ function markedRenderer(markdownToC, options) {
 
     markedRenderer.image = function (href, title, text) { 
         let _this = this;
-        console.log('this',{_this})
-        // return marked.Renderer.image(href, title, text);
+        
+        // href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
+        if (href === null) {
+            return text;
+        }
+
+        let out = '<img src="' + href + '" alt="' + text + '"';
+        if (title) {
+            out += ' title="' + title + '"';
+        }
+        out += '/>';
+
+        const { options } = _this;
+        console.log(`get settting:${options.imgPath}`, { options });
+
+
+        // return this.prototype.image(href, title, text);
+        return out;
     }
     
     

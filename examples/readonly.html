@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <title>Read only mode - Editor.md examples</title>
         <link rel="stylesheet" href="css/style.css" />
-        <link rel="stylesheet" href="../css/editormd.css" />
+        <link rel="stylesheet" href="../dist/css/editormd.css" />
         <link rel="shortcut icon" href="https://pandao.github.io/editor.md/favicon.ico" type="image/x-icon" />
     </head>
     <body>
@@ -18,7 +18,7 @@
                 <button id="unwatch-btn">Disable watch</button>
             </div>
             <div id="test-editormd" class="editormd-onlyread">   
-                <textarea style="display:none;">#### Setting
+                <textarea style="display:none;" data-img-path="xxx" >#### Setting
 
 ```javascript
 {
@@ -28,11 +28,12 @@
     //lineNumbers     : false        // hide line numbers
 }
 ```
+![](https://pandao.github.io/editor.md/images/logos/editormd-logo-180x180.png)
 </textarea>
             </div>
         </div>
         <script src="js/jquery.min.js"></script>
-        <script src="../editormd.js"></script>   
+        <script src="../dist/js/editormd.js"></script>   
         <script type="text/javascript">
 			var testEditor;
 

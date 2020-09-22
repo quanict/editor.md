@@ -80,6 +80,7 @@ var scssTask = function(fileName, path) {
 };
 
 const jsFiles = [
+    './src/helpers/*.js',
     './src/properties/*.js',
     './src/const/*.js',
     './src/utils/*.js',
