@@ -781,6 +781,12 @@ function editorMarkdownToHTML(id, options) {
  * @returns {Renderer} markedRenderer  Return the marked Renderer custom object
  */
 
+
+// marked.Renderer.prototype.image = function (href, title, text) {
+    
+// }
+
+
 function markedRenderer(markdownToC, options) { 
     var defaults = {
         toc                  : true,           // Table of contents
@@ -795,8 +801,7 @@ function markedRenderer(markdownToC, options) {
         flowChart            : false,          // flowChart.js only support IE9+
         sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
     };
-    console.log('do redner ');
-    console.trace();
+    
     var settings        = $.extend(defaults, options || {});    
     var marked          = editormd.$marked;
     var markedRenderer  = new marked.Renderer();
@@ -815,6 +820,10 @@ function markedRenderer(markdownToC, options) {
         twemojiReg      :regexs.twemoji
     });
 
+    let test = marked.Renderer;
+    // console.log(` === dd ${typeof marked.Renderer}`,{test})
+    // console.log('do redner ',{markedRenderer});
+    // console.trace();
     markedRenderer.emoji = (text) => {
         if (!settings.emoji) {
             return text;
@@ -946,6 +955,13 @@ function markedRenderer(markdownToC, options) {
             return "<li>" + this.atLink(this.emoji(text)) + "</li>";
         }
     };
+
+    markedRenderer.image = function (href, title, text) { 
+        let _this = this;
+        console.log('this',{_this})
+        // return marked.Renderer.image(href, title, text);
+    }
+    
     
     return markedRenderer;
 }

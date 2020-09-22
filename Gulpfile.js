@@ -1,6 +1,7 @@
 "use strict";
 
-var os           = require("os");
+var os = require("os");
+var fs = require('fs');
 var gulp         = require("gulp");
 var gutil        = require("gulp-util");
 // var sass         = require("gulp-ruby-sass");
@@ -38,21 +39,22 @@ var headerComment = ["/*",
 					"\r\n"].join("\r\n");
 
 var headerMiniComment = "/*! <%= pkg.name %> v<%= pkg.version %> | <%= fileName(file) %> | <%= pkg.description %> | MIT License | By: <%= pkg.author %> | <%= pkg.homepage %> | <%=pkg.today('Y-m-d') %> */\r\n";
+const distPath = './dist/';
 
 var scssTask = function(fileName, path) {
     
     path = path || "scss/";
     
-    var distPath = "css";
+    var storePath = `${distPath}/css`;
     console.log(`== scssTask:${path + fileName + ".scss"}`)
-    return gulp.src(path + fileName + ".scss")
+    const task = gulp.src(path + fileName + ".scss")
     // sass(path + fileName + ".scss", {
     //     style: "expanded",
     //     // sourcemap: false,
     //     noCache: true
     // })
         .pipe(sass())
-        .pipe(gulp.dest(distPath))
+        .pipe(gulp.dest(storePath))
     //     .pipe(header(headerComment, {pkg : pkg, fileName : function(file) { 
     //         var name = file.path.split(file.base);
     //         return name[1].replace("\\", "");
@@ -69,6 +71,12 @@ var scssTask = function(fileName, path) {
     //    .pipe(gulp.dest(distPath)) 
         
     //    .pipe(notify({ message: fileName + ".scss task completed!" }));
+
+    if (fs.existsSync(distPath+"dev")) {
+        task.pipe(gulp.dest(distPath+"dev/css"));
+    }
+
+    return task;
 };
 
 const jsFiles = [
@@ -79,7 +87,8 @@ const jsFiles = [
     './src/renderer/*.js',
     './src/editormd.js'
 ];
-const distJsPath = './dist/js/';
+
+
 
 gulp.task("scss", function() { 
 	return scssTask("editormd");
@@ -98,7 +107,7 @@ gulp.task("scss3", function() {
  */
 gulp.task("js", function() { 
     let task = gulp.src(jsFiles);
-    let distPath = gulp.dest(distJsPath);
+    let distStorePath = gulp.dest(distPath+'/js/');
 
     // task.pipe(jshint("./.jshintrc"));
 
@@ -114,7 +123,7 @@ gulp.task("js", function() {
     //  javascript-obfuscator
     // task.pipe(javascriptObfuscator({
     //         compact: true
-    // })).pipe(distPath);
+    // })).pipe(distStorePath);
 
     /**
      * add header
@@ -129,7 +138,7 @@ gulp.task("js", function() {
      */
     // task.pipe(rename({ suffix: ".min" }))
     //     .pipe(uglify())  // {outSourceMap: true, sourceRoot: './'}
-    //     .pipe(distPath);
+    //     .pipe(distStorePath);
 
     task = task.pipe(minify({
         ext: {
@@ -137,17 +146,23 @@ gulp.task("js", function() {
         },
         ignoreFiles: ['min.js']
     }));
-    task.pipe(distPath);
+    task.pipe(distStorePath);
 
     // task.pipe(header(headerMiniComment, {pkg : pkg, fileName : function(file) {
     //     var name = file.path.split(file.base + ( (os.platform() === "win32") ? "\\" : "/") );
     //     return name[1].replace(/[\\\/]?/, "");
-    // }})).pipe(distPath);
+    // }})).pipe(distStorePath);
 
     // task = task.pipe(notify({ message: "editormd.js task complete" }));
 
     // const distJsFile = gulp.dest('dist/js/editormd.js');
     // task = task.pipe( distJsFile );
+
+    
+    // if (fs.existsSync(distPath+"dev")) {
+    //     task.pipe(gulp.dest(distPath+"dev/js"));
+    // }
+
     return task;
 }); 
 
