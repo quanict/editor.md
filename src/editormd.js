@@ -89,7 +89,6 @@
     editormd.$marked      = null;
     editormd.$CodeMirror  = null;
     editormd.$prettyPrint = null;
-    
     var timer, flowchartTimer;
 
     editormd.prototype    = editormd.fn = {
@@ -127,10 +126,17 @@
                 settings.emojiCategories = options.emojiCategories;
             }
 
-            this.settings        = settings;
+            // this.settings        = settings;
 
-            id                   = (typeof id === "object") ? settings.id : id;
-            var editor           = this.editor       = $("#" + id);
+            var editor;
+            if( id instanceof HTMLElement ){
+                let element = id;
+                editor           = this.editor       = $(element);
+                id               = element.id.length > 0 ? element.id : settings.id;
+            } else {
+                id               = (typeof id === "object") ? settings.id : id;
+                editor           = this.editor       = $("#" + id);
+            }
             this.id              = id;
             this.lang            = settings.lang;
 
@@ -225,6 +231,9 @@
                 }
             }
 
+            editormd.settings = settings;
+            this.settings = settings;
+
             if ((typeof define === "function" && define.amd) || !settings.autoLoadModules)
             {
                 if (typeof window.CodeMirror !== "undefined") {
@@ -242,6 +251,8 @@
                 this.loadQueues();
             }
             // editorTheme.call(this);
+
+            
             return this;
         },
         
@@ -266,7 +277,7 @@
          */
         
         config : function(key, value) {
-            var settings = this.settings;
+            var settings = editormd.settings;
             
             if (typeof key === "object")
             {
@@ -280,7 +291,6 @@
             
             this.settings = settings;
             this.recreate();
-            
             return this;
         },
         
@@ -330,9 +340,9 @@
     editormd.appendMethod(editorString);
     editormd.appendMethod(editorCodeTree);
 
-    editormd.urls = {
-        atLinkBase : "https://github.com/"
-    };
+    // editormd.urls = {
+    //     atLinkBase : "https://github.com/"
+    // };
     
     editormd.regexs = regexConst;
 
@@ -403,3 +413,17 @@
     return editormd;
 
 }));
+
+(function ( $ ) {
+ 
+    var shade = "#556b2f";
+ 
+    $.fn.editormd = function(options) {
+        let containter = this.get(0);
+        if( containter ){
+            console.log('plugin create editor',{containter})
+            return editormd(containter,options);
+        }
+    };
+ 
+}( jQuery ));

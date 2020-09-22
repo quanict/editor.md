@@ -68,7 +68,7 @@ var scssTask = function(fileName, path) {
         // }}))
     //    .pipe(gulp.dest(distPath)) 
         
-       .pipe(notify({ message: fileName + ".scss task completed!" }));
+    //    .pipe(notify({ message: fileName + ".scss task completed!" }));
 };
 
 const jsFiles = [

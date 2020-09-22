@@ -19,8 +19,8 @@ function markedRenderer(markdownToC, options) {
         flowChart            : false,          // flowChart.js only support IE9+
         sequenceDiagram      : false,          // sequenceDiagram.js only support IE9+
     };
-
-    
+    console.log('do redner ');
+    console.trace();
     var settings        = $.extend(defaults, options || {});    
     var marked          = editormd.$marked;
     var markedRenderer  = new marked.Renderer();
@@ -46,13 +46,15 @@ function markedRenderer(markdownToC, options) {
         return emojiRenderer.execute(text);
     };
 
+    const mdSettings = this.settings;
+
     const atLinkRenderer = new AtLinkRenderer({ 
         atLinkReg: regexs.atLink, 
         emailReg: regexs.emailReg,
         emailLinkReg: regexs.emailLinkReg,
         atLink: settings.atLink,
         emailLink : settings.emailLink,
-        atLinkBase : editormd.urls.atLinkBase
+        atLinkBase : mdSettings.atLinkBase
     });
 
     markedRenderer.atLink = function (text) { 

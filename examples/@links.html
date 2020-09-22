@@ -118,17 +118,31 @@ http://socialpro.demo.ipandao.com/app/images/welcom-logo@4x.png
             
             $(function() {    
                 // You can custom @link base url.
-                editormd.urls.atLinkBase = "https://github.com/";
                 
-                testEditor = editormd("test-editormd", {
+                // testEditor = editormd("test-editormd", {
+                //     width     : "90%",
+                //     height    : 720,
+                //     toc       : true,
+                //     //atLink    : false,    // disable @link
+                //     //emailLink : false,    // disable email address auto link
+                //     todoList  : true,
+                //     path      : '../lib/',
+                //     atLinkBase: "https://github.com/"
+                // });
+
+                var options = {
                     width     : "90%",
                     height    : 720,
                     toc       : true,
                     //atLink    : false,    // disable @link
                     //emailLink : false,    // disable email address auto link
                     todoList  : true,
-                    path      : '../lib/'
-                });
+                    path      : '../lib/',
+                    atLinkBase: "https://github.com/"
+                };
+
+                // $('#test-editormd').editormd(options);
+                editormd("test-editormd", options);
             });
         </script>
     </body>

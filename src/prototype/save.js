@@ -5,7 +5,8 @@
  */
         
 function editorSave() {
-            
+          
+    console.log(`======editorSave`,{timer})
     if (timer === null)
     {
         return this;

@@ -10,9 +10,8 @@ const qLoader = {
         var _this        = this;
         var settings     = this.settings;
         var loadPath     = settings.path;
-                            
+                      
         var loadFlowChartOrSequenceDiagram = function() {
-            
             if (editormd.isIE8) 
             {
                 _this.loadedDisplay();
@@ -124,7 +123,7 @@ const qLoader = {
      */
     
     loadedDisplay : function(recreate) {
-        
+        console.log(`==== load display`);
         recreate             = recreate || false;
         
         var _this            = this;
